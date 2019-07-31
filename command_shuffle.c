@@ -23,13 +23,13 @@ struct arg_shuffle
 static struct argp_option opt_shuffle[] =
 {
 
-  { "genomeSize", 'g', "K/M/G/T",0,"Genome size scale ( with K/M/G). K for single or few genes, M for prokayote genome, G for mammals genome. If specified, will be used for determing context length.[M]\v", 1},
-  { "halfKmerLen",'k', "INT", 0, "the length of one side flanking sequence of object, both sides flanking sequence of which catenated in the context.  K should be long enough be nearly unique in genome and is suggested as short as possilbe to keep a good sensitivity, given the uniquess is satisfied, the experical formula is FORMAULA, for proyakat genome,or -g=M, k=8 is suggested, for mamals, -g=G, 11 is suggested.[8]\v" },
- {"halfSubctxLen",'s',"INT", 0,"the length of one side flanking sequence of object, both sides flanking sequence of which catenated in the subcontext. so assumming comparing dna sequences, which have an alphbet size of 4, the dimension of the whole subcontext space is 4^(2*NUM), or 16^NUM, namely, the size of population from which random samples of subspaces are drawed for the purpose of reduced representative of the orignal sequence or for decomposing orignal sequence into blocks, each block is a reduced representative of the orignal sequence using different subcontext space, subcontext should never longer than the context length presetted.[3]\v" },
- {"level",'l',"INT", 0, "the level of dimensionality reduction, this option is used the control the dimensionality reduction rate. The  dimensionality reduction rate is 16^NUM (assuming dna sequence used), e.g. set --reductionLevel=1, the reduction rate will be 16.  The reduction rate is the ratio of the dimension of the whole subcontext space divided by the dimension of drawed subspace, or the ratio of dimension of whole context space divided by dimension of context space after dimensionality reduction, which determine the memory occupy. This value should never larger than the value feed for option -s. To keep the statistical stability of dimensionality reduction, it is suggested the subcontext space dimension after reduction are still large enough( >=256 ), the pragram automatically alert when dimension after reduction are too small.[0]\v",7},
+
+  {"halfKmerLen",'k', "INT", 0, "a half of the length of k-mer. For proyakat genome, k=8 is suggested, for mammals, -g=G, 10 or 11 is suggested.[8]\v" },
+ {"halfSubstrLen",'s',"INT", 0,"a half of the length of k-mer substring. [5]\v" },
+ {"level",'l',"INT", 0, "the level of dimensionality reduction, the expectation dimensionality reduction rate is 16^n if set -l = n. [2]\v",7},
  {"outfile",'o',"STRING",0,"specify the output file name prefix, if not specify default shuffle named 'default.shuf generated'\v"},
 
- {"usedefault",999,0,0,"All options use default value, which assuming prokaryote genomes, halfCtxLen=8, halfSubctxLen=3, and dimensionality reduction level=2.\v",8},
+ {"usedefault",999,0,0,"All options use default value, which assuming prokaryote genomes, k=8, s=3, and l=2.\v",8},
   { 0 }
 };
 
@@ -43,7 +43,7 @@ static char doc_shuffle[] =
 dim_shuffle_stat_t dim_shuffle_stat = {
 0,
 8,
-3,
+5,
 2,
 };
 
@@ -129,7 +129,10 @@ int cmd_shuffle(struct argp_state* state)
   state->next += argc - 1;
 
 
-  return write_dim_shuffle_file(&dim_shuffle_stat, shuf_out_file_prefix) ;
+ if(argc >1)
+   return write_dim_shuffle_file(&dim_shuffle_stat, shuf_out_file_prefix) ;
+ else
+  return -1;
 }
 
 
@@ -181,7 +184,7 @@ int write_dim_shuffle_file(dim_shuffle_stat_t* dim_shuffle_stat, char *outfile_p
  int dim_after_reduction = 1<< 4*(dim_shuffle_stat->subk - dim_shuffle_stat->drlevel);
  if( dim_after_reduction < MIN_SUBCTX_DIM_SMP_SZ )
   warnx("dimension after reduction %d is smaller than the suggested minimal"
-  " dimension sample size %d, which might cause loss of robutness, -s %d is suggested",dim_after_reduction,MIN_SUBCTX_DIM_SMP_SZ, dim_shuffle_stat->drlevel+2);
+  " dimension sample size %d, which might cause loss of robutness, -s %d is suggested",dim_after_reduction,MIN_SUBCTX_DIM_SMP_SZ, dim_shuffle_stat->drlevel+3);
  if(strlen(outfile_prefix) + strlen(".shuf") >PATHLEN)
   err(errno,"output path name %s should less than %d characters",outfile_prefix,PATHLEN);
 
