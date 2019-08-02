@@ -32,7 +32,9 @@
 #define PATHLEN 256
 #define MCO_BUF_S 4096
 
+#ifndef COMPONENT_SZ
 #define COMPONENT_SZ 7
+#endif
 #define CTX_SPC_USE_L 4
 #define CTX_DR_LMT 100
 #define LD_FCTR 0.6

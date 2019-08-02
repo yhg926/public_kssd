@@ -240,7 +240,7 @@ static struct argp argp_dist =
 {
   opt_dist,
   parse_dist,
-  "<*.mco> [<*.mco>]",
+  "[<query>]",
   doc_dist
 };
 

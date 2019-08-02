@@ -1,0 +1,3 @@
+availbe mem.=31.102352	real time mem.=33385896320
+run mco_cbd_koc_dist(), 12 threads used
+distance output to : ./distance.out

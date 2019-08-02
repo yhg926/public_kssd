@@ -80,6 +80,8 @@ static error_t parse_global(int key, char* arg, struct argp_state* state)
         argp_state_help(state,stdout,ARGP_HELP_SHORT_USAGE);
         printf("\v");
         argp_state_help(state,stdout,ARGP_HELP_POST_DOC);
+    printf("Unit_space_size = %d\n", COMPONENT_SZ);
+    printf("\v");
         return EINVAL;
   }
   else if(key == ARGP_KEY_INVALID){
