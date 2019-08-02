@@ -29,7 +29,7 @@ static struct argp_option opt_shuffle[] =
  {"level",'l',"INT", 0, "the level of dimensionality reduction, the expectation dimensionality reduction rate is 16^n if set -l = n. [2]\v",7},
  {"outfile",'o',"STRING",0,"specify the output file name prefix, if not specify default shuffle named 'default.shuf generated'\v"},
 
- {"usedefault",999,0,0,"All options use default value, which assuming prokaryote genomes, k=8, s=3, and l=2.\v",8},
+ {"usedefault",999,0,0,"All options use default value, which assuming prokaryote genomes, k=8, s=5, and l=2.\v",8},
   { 0 }
 };
 
