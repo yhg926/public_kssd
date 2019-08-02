@@ -1,11 +1,7 @@
-# 1 "global_basic.h"
 #ifndef GLOBAL_BASIC
 #define GLOBAL_BASIC 
-
 #define _64MASK 0xffffffffffffffffLLU
-
 #define BIT1MASK 0x0000000000000001LLU
-
 #if ALPHABET == 1
  #define DEFAULT 15
  #define OBJ_ALPH 16
@@ -14,7 +10,6 @@
  #include <stdbool.h>
   extern const bool Objdist[16][16];
   #define IS_DIFF(X,Y) ( Objdist[(X)][(Y)] )
-
 #elif ALPHABET == 2
  #define DEFAULT (-1)
  #define OBJ_BITS 5
@@ -27,48 +22,30 @@
  #define BIN_SZ 65536
  #define IS_DIFF(X,Y) ( (X) != (Y) )
 #endif
-
 #define LMAX 4096
 #define PATHLEN 256
 #define MCO_BUF_S 4096
-
 #ifndef COMPONENT_SZ
 #define COMPONENT_SZ 7
 #endif
 #define CTX_SPC_USE_L 4
 #define CTX_DR_LMT 100
 #define LD_FCTR 0.6
-
-
-
 #define GID_ARR_SZ 16
 #define BBILLION 1073741824
-
 typedef unsigned long long int llong;
-
  #include <argp.h>
-
   struct arg_global { int verbosity; };
-
  void log_printf(struct arg_global* g, int level, const char* fmt, ...);
  #define ARGP_KEY_INVALID 16777219
-
-
-
-
-
-
-
 FILE * fpathopen (const char *dpath, const char *fname, const char *mode );
 double get_sys_mmry(void);
-
 #define SWAP2 0x3333333333333333ULL
 #define SWAP4 0x0F0F0F0F0F0F0F0FULL
 #define SWAP8 0x00FF00FF00FF00FFULL
 #define SWAP16 0x0000FFFF0000FFFFULL
 #define SWAP32 0x00000000FFFFFFFFULL
 static inline llong crvs64bits(llong n) {
-
   n = ((n >> 2 ) & SWAP2 ) | ((n & SWAP2 ) << 2 );
   n = ((n >> 4 ) & SWAP4 ) | ((n & SWAP4 ) << 4 );
   n = ((n >> 8 ) & SWAP8 ) | ((n & SWAP8 ) << 8 );
@@ -76,49 +53,33 @@ static inline llong crvs64bits(llong n) {
   n = ((n >> 32) & SWAP32) | ((n & SWAP32) << 32);
   return ~n;
 }
-
-
 extern const int Basemap[128];
 extern const char Mapbase[];
 extern const unsigned int primer[25];
 llong find_lgst_primer_2pow(int w);
-
-
-
 typedef struct infile_entry {
  size_t fsize;
  char* fpath;
 } infile_entry_t ;
-
 typedef struct infile_tab {
   int infile_num;
   infile_entry_t* organized_infile_tab;
 } infile_tab_t ;
-
 #define BASENAME_LEN 128
 typedef struct bin_stat {
-
  llong est_kmc_bf_dr;
  char (*seqfilebasename)[BASENAME_LEN];
  llong AllcoMem;
 } bin_stat_t;
-
-
 infile_tab_t * organize_infile_list(char* list_path);
 infile_tab_t * organize_infile_frm_arg (int num_remaining_args, char ** remaining_args);
-
 bin_stat_t * get_bin_basename_stat(infile_entry_t* organized_infile_tab, int *shuffle_arr,int binsz);
-
-
-
-
 #define ACPT_FMT_SZ 7
 #define FAS_FMT_SZ 4
 #define FQ_FMT_SZ 2
 #define CO_FMT_SZ 1
 #define MCO_FMT_SZ 1
 #define CMPRESS_FMT_SZ 2
-
 extern const char
 *acpt_infile_fmt[ACPT_FMT_SZ],
 *fasta_fmt[FAS_FMT_SZ],
@@ -126,8 +87,6 @@ extern const char
 *co_fmt[CO_FMT_SZ],
 *mco_fmt[MCO_FMT_SZ],
 *compress_fmt[CMPRESS_FMT_SZ];
-
-
 #include <string.h>
 static inline int isCompressfile(char *fname)
 {
@@ -140,15 +99,12 @@ static inline int isCompressfile(char *fname)
  }
  return ret;
 }
-
 static inline int isOK_fmt_infile (char* fname, const char *test_fmt[], int test_fmt_arr_sz)
 {
   int ret = 0 ;
   char suftmp[10];
-
  for(int i=0; i < CMPRESS_FMT_SZ;i++ ){
    int basename_len = strlen(fname) - strlen(compress_fmt[i]);
-
    if( strcmp( ( fname + basename_len ),compress_fmt[i]) == 0 ){
      char cp_fname[PATHLEN];
      strcpy(cp_fname, fname);
@@ -157,7 +113,6 @@ static inline int isOK_fmt_infile (char* fname, const char *test_fmt[], int test
    break;
    };
  };
-
   for(int i=0; i< test_fmt_arr_sz; i++){
     sprintf(suftmp,".%s",test_fmt[i]);
     if ( strcmp((char *)(fname+strlen(fname) - strlen(suftmp)), suftmp) == 0 ){
@@ -166,8 +121,6 @@ static inline int isOK_fmt_infile (char* fname, const char *test_fmt[], int test
   };
   return ret;
 };
-
-
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -176,7 +129,6 @@ static inline int isOK_fmt_infile (char* fname, const char *test_fmt[], int test
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
-
 static inline void check (int test, const char * message, ...)
 {
     if (test) {
@@ -188,13 +140,11 @@ static inline void check (int test, const char * message, ...)
         exit (EXIT_FAILURE);
     }
 };
-
 typedef struct mmpco
 {
  size_t fsize;
  unsigned int *mmpco;
 } mmp_uint_t;
-
 static inline mmp_uint_t mmp_uint_arr (char *cofname)
 {
  mmp_uint_t cofilemmp;
@@ -211,7 +161,6 @@ static inline mmp_uint_t mmp_uint_arr (char *cofname)
 };
 int str_suffix_match(char *str, const char *suf);
 const char * get_pathname(const char *fullpath, const char *suf);
-
 typedef struct
 {
   int fasta;
@@ -219,7 +168,5 @@ typedef struct
   int co;
  int mco;
 } infile_fmt_count_t ;
-
 infile_fmt_count_t *infile_fmt_count ( infile_tab_t * infile_tab );
-
 #endif

@@ -1,4 +1,3 @@
-# 1 "command_dist_wrapper.c"
 #include "command_dist_wrapper.h"
 #include "command_dist.h"
 #include "global_basic.h"
@@ -15,21 +14,16 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdbool.h>
-
 #ifdef _OPENMP
    #include <omp.h>
 #else
    #define omp_get_thread_num() 0
 #endif
-
-
 struct arg_dist
 {
   struct arg_global* global;
-
   char* name;
 };
-
 static struct argp_option opt_dist[] =
 {
  {"halfKmerlength",'k',"INT",0, "set half Kmer length: 2-15 [8]\v" },
@@ -40,23 +34,17 @@ static struct argp_option opt_dist[] =
  {"LstKmerOcrs",'n',"INT",0,"Specify the Least Kmer occurence in fastq file\v"},
  {"quality",'Q',"INT",0,"Filter Kmer with lowest base quality < q (Phred)\v"},
  {"reference_dir",'r',"<path>",0,"reference genome/database search against.\v"},
-
  {"outdir",'o',"<path>",0,"folder path for results files.\v" },
  {"neighborN_max",'N',"INT",0,"max number of nearest reference genomes.[1]\v"},
  {"mutDist_max",'D',"FLT",0,"max mutation allowed for distance output.[1]\v"},
-
-
-
   { 0 }
 };
-
 static char doc_dist[] =
   "\n"
   "The dist doc prefix."
   "\v"
   "The dist doc suffix."
   ;
-
 dist_opt_val_t dist_opt_val =
 {
 8,
@@ -78,9 +66,7 @@ false,
 0,
 NULL
 } ;
-
 const char outdir_name[] = "kssd_rslt" ;
-
 static error_t parse_dist(int key, char* arg, struct argp_state* state) {
   struct arg_dist* dist = state->input;
   assert( dist );
@@ -101,7 +87,6 @@ static error_t parse_dist(int key, char* arg, struct argp_state* state) {
 #endif
   }
    break;
-
   case 'm':
   {
    double sys_mm = get_sys_mmry();
@@ -114,7 +99,6 @@ static error_t parse_dist(int key, char* arg, struct argp_state* state) {
     dist_opt_val.mmry = rqst_mm ;
   }
   break;
-
   case 'r':
   {
    if(strlen(arg) > PATHLEN) {
@@ -159,7 +143,6 @@ static error_t parse_dist(int key, char* arg, struct argp_state* state) {
     dist_opt_val.kmerocrs = 1;
      warnx("-n argument is smaller than Min, it has been set to 1, ignorned -n %d ",atoi(arg));
    }
-
    else dist_opt_val.kmerocrs = atoi(arg);
   }
    break;
@@ -206,7 +189,6 @@ static error_t parse_dist(int key, char* arg, struct argp_state* state) {
     dist_opt_val.num_remaining_args = state->argc - state->next;
         dist_opt_val.remaining_args = state->argv + state->next;
    break;
-
     case ARGP_KEY_NO_ARGS:
     {
    if(state->argc < 2)
@@ -235,7 +217,6 @@ static error_t parse_dist(int key, char* arg, struct argp_state* state) {
  }
   return 0;
 }
-
 static struct argp argp_dist =
 {
   opt_dist,
@@ -243,42 +224,34 @@ static struct argp argp_dist =
   "[<query>]",
   doc_dist
 };
-
 int cmd_dist(struct argp_state* state)
 {
   struct arg_dist dist = { 0, };
   int argc = state->argc - state->next + 1;
   char** argv = &state->argv[state->next - 1];
   char* argv0 = argv[0];
-
   dist.global = state->input;
   argv[0] = malloc(strlen(state->name) + strlen(" dist") + 1);
-
   if(!argv[0])
     argp_failure(state, 1, ENOMEM, 0);
-
   sprintf(argv[0], "%s dist", state->name);
   argp_parse(&argp_dist, argc, argv, ARGP_IN_ORDER, &argc, &dist);
   free(argv[0]);
   argv[0] = argv0;
   state->next += argc - 1;
-
  return dist_dispatch(&dist_opt_val);
 }
-
 const char *mk_dist_rslt_dir (const char *parentdirpath, const char * outdirpath )
 {
   struct stat dstat;
   const char *outfullpath = malloc(PATHLEN *sizeof(char));
   sprintf((char *)outfullpath,"%s/%s",parentdirpath,outdirpath);
-
   if(stat(parentdirpath, &dstat) == 0 && S_ISDIR(dstat.st_mode)){
     if( stat(outfullpath, &dstat) == 0 ){
    errno = EEXIST;
       err(errno,"%s",outfullpath);
   }
     else{
-
       mkdir(outfullpath,0777);
     }
   }

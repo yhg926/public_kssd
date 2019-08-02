@@ -1,4 +1,3 @@
-# 2 "global_wrapper.c"
 #include "global_wrapper.h"
 #include "global_basic.h"
 #include "command_shuffle.h"
@@ -12,27 +11,21 @@
 #include <time.h>
 #include <argp.h>
 #include <argz.h>
-
-
-
 static struct argp_option opt_global[] = {
  {"usage",'u',0,OPTION_NO_USAGE,0},
  {"help",'?',0,OPTION_NO_USAGE,0},
  {"license",'l',0, OPTION_NO_USAGE,"license and copyright information.",0},
  { 0 }
 };
-
 static char doc_license[] =
 "\n"
   "insert a license doc"
 "\v"
 ;
-
 static char doc_global[] =
 "\n"
       "Example of parsing a nested command line."
 "\v"
-
       "Supported subcommands are:\n"
 "\n"
       "  shuffle	shuffle/sampling k-mer substring space.\n"
@@ -40,14 +33,10 @@ static char doc_global[] =
       "  dist   	sequences sketching and distance estimation.\n"
 "\n"
    "  reverse	reverse kssd sketch to k-mer set.\n"
-
-"\v"
+"\n"
 ;
-
-
 static error_t parse_global(int key, char* arg, struct argp_state* state)
 {
-
   if(key == '?' || key=='u')
    state->name = long_domain;
  else if (key == 'l'){
@@ -76,12 +65,11 @@ static error_t parse_global(int key, char* arg, struct argp_state* state)
   else if(key == ARGP_KEY_NO_ARGS){
         state->name = long_domain;
     printf("\n%s\n\n",argp_program_version);
+    printf("Unit_space_size = %d\n\n", COMPONENT_SZ);
     printf("Type 'kssd --licence' for license and copyright information.\n\n");
         argp_state_help(state,stdout,ARGP_HELP_SHORT_USAGE);
         printf("\v");
         argp_state_help(state,stdout,ARGP_HELP_POST_DOC);
-    printf("Unit_space_size = %d\n", COMPONENT_SZ);
-    printf("\v");
         return EINVAL;
   }
   else if(key == ARGP_KEY_INVALID){
@@ -91,7 +79,6 @@ static error_t parse_global(int key, char* arg, struct argp_state* state)
   else return ARGP_ERR_UNKNOWN;
   return 0;
 }
-
 static struct argp argp =
 {
   opt_global,
@@ -102,7 +89,6 @@ static struct argp argp =
   0,
   0
 };
-
 void cmd_global(int argc, char**argv)
 {
   struct arg_global global = { };

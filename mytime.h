@@ -1,4 +1,3 @@
-# 1 "mytime.h"
 #ifndef MYTIME
 #define MYTIME 
 long long timeInMilliseconds(void);
