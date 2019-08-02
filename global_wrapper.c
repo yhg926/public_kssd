@@ -35,9 +35,9 @@ static char doc_global[] =
 
       "Supported subcommands are:\n"
 "\n"
-      "  shuffle	shuffle subcontext space and set component block size.\n"
+      "  shuffle	shuffle/sampling k-mer substring space.\n"
 "\n"
-      "  dist   	bulid database and pairwise distance.\n"
+      "  dist   	sequences sketching and distance estimation.\n"
 "\n"
    "  reverse	reverse kssd sketch to k-mer set.\n"
 
