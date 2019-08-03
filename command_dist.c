@@ -430,7 +430,6 @@ static int ref_seq_num,qry_seq_num,kmerlen,dim_reduct_len;
 void mco_co_dist( char *refmco_dname, char *qryco_dname, const char *distout_dir, int p_fit_mem)
 {
  fprintf(logfp,"run mco_co_dist(), %d threads used\n",p_fit_mem);
- printf("run mco_co_dist(), %d threads used\n",p_fit_mem);
  FILE *refmco_dstat_fp, *qryco_dstat_fp;
  char *refmco_dstat_fpath = malloc(PATHLEN*sizeof(char));
  char *qryco_dstat_fpath = malloc(PATHLEN*sizeof(char));
@@ -663,8 +662,6 @@ void mco_cbd_co_dist(dist_opt_val_t *opt_val_in)
      }
      }
      }
-     printf("j=%d\tb=%d\toffset=%lu\tprim_addr=%p\toffset_addr=%p checked\n",j,b, (size_t)b*num_cof_batch*mco_dstat_readin.infile_num,
-     ctx_obj_ct, ctx_obj_ct + (size_t)b*num_cof_batch*mco_dstat_readin.infile_num);
     free(cbd_fcode_mem);
     munmap(mco_offset_index, comp_sz * sizeof(size_t));
     munmap(mco_bin_index,comp_sz*ref_bin_num*sizeof(unsigned int) );
@@ -699,8 +696,7 @@ void mco_cbd_koc_compatible_dist(dist_opt_val_t *opt_val_in)
   char *refmco_dname = opt_val_in->refpath;
   char *qryco_dname = opt_val_in->remaining_args[0];
   const char *distout_dir = opt_val_in->outdir;
-  fprintf(logfp,"run mco_cbd_koc_dist(), %d threads used\n",p_fit_mem);
-  printf("run mco_cbd_koc_dist(), %fG memory used\t%d threads used\n",opt_val_in->mmry,p_fit_mem);
+  fprintf(logfp,"mco_cbd_compatible_dist(): %d threads used\n",p_fit_mem);
   FILE *refmco_dstat_fp, *qryco_dstat_fp;
   char *refmco_dstat_fpath = malloc(PATHLEN*sizeof(char));
   char *qryco_dstat_fpath = malloc(PATHLEN*sizeof(char));
@@ -830,8 +826,6 @@ void mco_cbd_koc_compatible_dist(dist_opt_val_t *opt_val_in)
            }
          }
        }
-        printf("j=%d\tb=%d\toffset=%lu\tprim_addr=%p\toffset_addr=%p checked\n",j,b, (size_t)b*num_cof_batch*mco_dstat_readin.infile_num,
-          ctx_obj_ct, ctx_obj_ct + (size_t)b*num_cof_batch*mco_dstat_readin.infile_num);
         free(cbd_fcode_mem);
       }
      if ( msync( ctx_obj_ct + (size_t)b*num_cof_batch*mco_dstat_readin.infile_num, maplength, MS_SYNC ) < 0 )
@@ -909,8 +903,6 @@ void mco_cbd_koc_compatible_dist(dist_opt_val_t *opt_val_in)
             }
           }
         }
-        printf("j=%d\tb=%d\toffset=%lu\tprim_addr=%p\toffset_addr=%p checked\n",j,b, (size_t)b*num_cof_batch*mco_dstat_readin.infile_num,
-          ctx_obj_ct, ctx_obj_ct + (size_t)b*num_cof_batch*mco_dstat_readin.infile_num);
         free(cbd_fcode_mem);
       }
       if ( msync( ctx_obj_ct + (size_t)b*num_cof_batch*mco_dstat_readin.infile_num, maplength, MS_SYNC ) < 0 )
