@@ -999,7 +999,8 @@ void fname_dist_print(int ref_bin_code, int qry_fcode, const char *distout_dir, 
  ctx_obj_ct = mmap(0, s.st_size , PROT_READ, MAP_PRIVATE, fd, 0);
  check ( ctx_obj_ct == MAP_FAILED, "mmap %s failed: %s", full_distfcode, strerror (errno));
  double jac_ind,contain_ind,Dm,Da,P_K_in_X_XnY, P_K_in_Y_XnY,
- j_prim, c_prim, Dm_prim, Da_prim, sd_j_prim, sd_c_prim,
+ j_prim, c_prim,
+ sd_j_prim, sd_c_prim,
  CI95_j_prim1, CI95_j_prim2, CI95_c_prim1, CI95_c_prim2,
  CI95_Dm_prim1,CI95_Dm_prim2,CI95_Da_prim1,CI95_Da_prim2;
  int Min_XY_size, X_size, Y_size, XnY_size, XuY_size, X_XnY_size, Y_XnY_size ;
@@ -1022,8 +1023,6 @@ void fname_dist_print(int ref_bin_code, int qry_fcode, const char *distout_dir, 
        /(P_K_in_X_XnY + P_K_in_Y_XnY - 2*P_K_in_X_XnY * P_K_in_Y_XnY);
   j_prim = ((double)XnY_size - rs) / XuY_size ;
   c_prim = ((double)XnY_size - rs) / Min_XY_size ;
-  Dm_prim = j_prim == 1? 0:-log(2*j_prim/(1+j_prim)) / kmerlen ;
-  Da_prim = c_prim==1? 0:-log(c_prim) / kmerlen ;
   sd_j_prim = pow(j_prim*(1 - j_prim) / XuY_size, 0.5) ;
   sd_c_prim = pow(c_prim*(1 - c_prim) / Min_XY_size,0.5) ;
   CI95_j_prim1 = j_prim - 1.96*sd_j_prim;
@@ -1038,9 +1037,9 @@ void fname_dist_print(int ref_bin_code, int qry_fcode, const char *distout_dir, 
   double pv_c_prim = 0.5 * erfc( c_prim/sd_c_prim * pow(0.5,0.5) );
   double qv_j_prim = pv_j_prim * ref_seq_num*qry_seq_num ;
   double qv_c_prim = pv_c_prim * ref_seq_num*qry_seq_num ;
-  fprintf(dout_fp,"%s\t%s\t%u-%u|%u|%u\t%lf\t%lf\t%lf\t%lf\t%lf[%lf,%lf]\t%lf[%lf,%lf]\t%lf[%lf,%lf]\t%lf[%lf,%lf]\t%E\t%E\t%E\t%E\n", qryfname[qry_fcode],refname[ref_bin_code*BIN_SZ + i],XnY_size,(unsigned int)rs,X_size,Y_size,jac_ind,Dm,
-        contain_ind,Da,j_prim,CI95_j_prim1,CI95_j_prim2,Dm_prim,CI95_Dm_prim1,CI95_Dm_prim2,c_prim,CI95_c_prim1,
-    CI95_c_prim2,Da_prim,CI95_Da_prim1,CI95_Da_prim2,pv_j_prim,pv_c_prim,qv_j_prim,qv_c_prim);
+  fprintf(dout_fp,"%s\t%s\t%u-%u|%u|%u\t%lf\t%lf\t%lf\t%lf\t[%lf,%lf]\t[%lf,%lf]\t[%lf,%lf]\t[%lf,%lf]\t%E\t%E\t%E\t%E\n", qryfname[qry_fcode],refname[ref_bin_code*BIN_SZ + i],XnY_size,(unsigned int)rs,X_size,Y_size,jac_ind,Dm,
+        contain_ind,Da,CI95_j_prim1,CI95_j_prim2,CI95_Dm_prim1,CI95_Dm_prim2,CI95_c_prim1,
+    CI95_c_prim2,CI95_Da_prim1,CI95_Da_prim2,pv_j_prim,pv_c_prim,qv_j_prim,qv_c_prim);
  }
  close(fd);
   munmap(ctx_obj_ct, s.st_size);
@@ -1143,8 +1142,10 @@ void dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned i
   sprintf(distf, "%s/distance.out", distout_dir);
  FILE *distfp = fopen(distf,"a") ;
   if( distfp == NULL ) err(errno,"dist_print_nobin():%s",distf);
-  double jac_ind,contain_ind,Dm,Da,P_K_in_X_XnY, P_K_in_Y_XnY,
-  j_prim, c_prim, Dm_prim, Da_prim, sd_j_prim, sd_c_prim,
+ fprintf(distfp,"Qry\tRef\tShared_k|Ref_s|Qry_s\tJaccard\tMashD\tContainmentM\tAafD"
+  "\tJaccard_CI\tMashD_CI\tContainmentM_CI\tAafD_CI\tP-value(J)\tP-value(C)\tFDR(J)\tFDR(C)\n");
+ double jac_ind,contain_ind,Dm,Da,P_K_in_X_XnY, P_K_in_Y_XnY,
+  j_prim, c_prim, sd_j_prim, sd_c_prim,
   CI95_j_prim1, CI95_j_prim2, CI95_c_prim1, CI95_c_prim2,
   CI95_Dm_prim1,CI95_Dm_prim2,CI95_Da_prim1,CI95_Da_prim2;
   int Min_XY_size, X_size, Y_size, XnY_size, XuY_size, X_XnY_size, Y_XnY_size ;
@@ -1175,8 +1176,6 @@ void dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned i
               /(P_K_in_X_XnY + P_K_in_Y_XnY - 2*P_K_in_X_XnY * P_K_in_Y_XnY);
       j_prim = ((double)XnY_size - rs) / XuY_size ;
       c_prim = ((double)XnY_size - rs) / Min_XY_size ;
-      Dm_prim = j_prim == 1? 0:-log(2*j_prim/(1+j_prim)) / kmerlen ;
-      Da_prim = c_prim==1? 0:-log(c_prim) / kmerlen ;
       sd_j_prim = pow(j_prim*(1 - j_prim) / XuY_size, 0.5) ;
       sd_c_prim = pow(c_prim*(1 - c_prim) / Min_XY_size,0.5) ;
       CI95_j_prim1 = j_prim - 1.96*sd_j_prim;
@@ -1191,10 +1190,10 @@ void dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned i
       double pv_c_prim = 0.5 * erfc( c_prim/sd_c_prim * pow(0.5,0.5) );
       double qv_j_prim = pv_j_prim * ref_seq_num*qry_seq_num ;
       double qv_c_prim = pv_c_prim * ref_seq_num*qry_seq_num ;
-      fprintf(distfp,"%s\t%s\t%u-%u|%u|%u\t%lf\t%lf\t%lf\t%lf\t%lf[%lf,%lf]\t%lf[%lf,%lf]\t%lf[%lf,%lf]\t%lf[%lf,%lf]\t%E\t%E\t%E\t%E\n",
-     qryfname[b*num_cof_batch + qid],refname[rid],XnY_size,(unsigned int)rs,X_size,Y_size,jac_ind,Dm,
-         contain_ind,Da,j_prim,CI95_j_prim1,CI95_j_prim2,Dm_prim,CI95_Dm_prim1,CI95_Dm_prim2,c_prim,CI95_c_prim1,
-         CI95_c_prim2,Da_prim,CI95_Da_prim1,CI95_Da_prim2,pv_j_prim,pv_c_prim,qv_j_prim,qv_c_prim);
+    fprintf(distfp,"%s\t%s\t%u-%u|%u|%u\t%lf\t%lf\t%lf\t%lf\t[%lf,%lf]\t[%lf,%lf]\t[%lf,%lf]\t[%lf,%lf]\t%E\t%E\t%E\t%E\n",
+         qryfname[b*num_cof_batch + qid],refname[rid],XnY_size,(unsigned int)rs,X_size,Y_size,jac_ind,Dm,
+          contain_ind,Da,CI95_j_prim1,CI95_j_prim2,CI95_Dm_prim1,CI95_Dm_prim2,CI95_c_prim1,
+          CI95_c_prim2,CI95_Da_prim1,CI95_Da_prim2,pv_j_prim,pv_c_prim,qv_j_prim,qv_c_prim);
     }
   }
   munmap(ctx_obj_ct + (size_t)b*num_cof_batch*ref_num, maplength);
