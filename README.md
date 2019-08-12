@@ -1,13 +1,26 @@
-# Sequences Dimensionality-Reduction by K-mer Substring Space Sampling Enables Effective Resemblance- and Containment-Analysis for Large-Scale omics-data
+# Kssd: K-mer substring space sampling/shuffling Decomposition
 
 Kssd is a command-line tool for large-scale sequences sketching and resemblance- and containment-analysis. It sketches sequences by k-mer substring space sampling/shuffling. It handles DNA sequences of both fasta or fastq format, whether gzipped or not. Kssd run on linux system.
-# Installation 
+### Table of contents
+1.  [Installation](#1-installation)
+2.  [Quick Tutorial](#2-quick-tutorial)
+3.  [For Advanced Users](#3-for-advanced-users)
+    1. [K-mer substring space shuffling](#31-k-mer-substring-space-shuffling)
+    2. [Sketching sequences](#32-sketching-sequences)
+        1.  [Sketching references](#321-sketching-references)  
+        2.  [Sketching queries](#322-sketching-queries)
+    3.  [Distance estimation](#33-distance-estimation)
+        1.  [Reference against references distance](#331-reference-against-references-distance) 
+        2.  [Search the queries against the references](#332-search-the-queries-against-the-references)
+      
+
+# 1.    Installation 
 ```
 git clone git@github.com:yhg926/public_kssd.git &&
 cd public_kssd &&
 make 
 ```
-# Quick Tutorial
+# 2.    Quick-Tutorial
 ```
 cd test_fna;
 #sketch references
@@ -19,8 +32,8 @@ cd test_fna;
 # or you can compute the pairwise distance of references
 ../kssd dist -r reference/ref -o reference reference/qry
 ```
-# For Advanced Users
-## 1    K-mer substring space shuffling
+# 3.    For Advanced Users
+## 3.1. K-mer substring space shuffling
 ```
 kssd shuffle -k <half_length_of_k-mer> -s <half_length_of_k-mer_substring> -l <dimensionality-reduction_level > -o <shuffled_k-mer_substring_space_file>
 ```
@@ -30,8 +43,8 @@ This command will generate a file suffixed by ‘.shuf’ which keeps the shuffl
 `-s`: Half-length of k-mer substring, `-s x` meaning the whole space is the collection of all `2x-mer`. Make sure `l < s < k`. The default setting is `-s 6`, usually there is no need to change this setting.   
 `-l`: The level of dimensionality-reduction. `-l x` meaning the expected rate of dimensionality-reduction is `$16^x$`; for bacterial `-l 3` is recommand; for mammals, `-l 4` or `-l 5` is recommand. `l < s`.  
 `-o` output .shuf file.
-## 2    Sketching sequences
-### 2.1 Sketching references
+## 3.2. Sketching sequences
+### 3.2.1   Sketching references
 ```
 kssd dist -r <.fasta/fastq_dir> -L <.shuf_file or dimentionality-reduction_level> [-k <half_k-mer_length>] -o <outdir>
 ```
@@ -56,19 +69,20 @@ The expected rate of dimensionality-reduction for `-L x` is `$16^x$`; for bacter
   
 `-o`: There are two folders `ref/` and `qry/` in the output dir `ref_outdir`.  In Step 3 distance estimation `ref_outdir/ref` feed as references for `-r` and `ref_outdir/qry` feed as queries   
 
-### 2.2  Sketching queries
+### 3.2.2   Sketching queries
 To compare queries with references, queries need be skeched using the same `.shuf` file with that of references.
 ```
 kssd dist -o <qry_outdir> -L <ref_outdir/default.shuf or the_.shuf_file_used_by_references> <queries_.fasta/fastq_dir>
 ```
 `-o`: There is only one folder `qry/` in the output dir `qry_outdir`. In Step 3 distance estimation `qry_outdir/qry` feed as queries.
-## 3   Distance estimation
-### 3.1 Reference against references distance
+
+## 3.3. Distance estimation
+### 3.3.1   Reference against references distance
 If you only want to compute pairwise distances of all references, run:
 ```
 kssd dist -r <ref_outdir/ref> -o <outdir> <ref_outdir/qry>
 ```
-### 3.2 Search the queries against the references
+### 3.3.2   Search the queries against the references
 Or if you want search the queries against the references, run:
 ```
 kssd dist -r <ref_outdir/ref> -o <outdir> <qry_outdir/qry>
