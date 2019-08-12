@@ -14,13 +14,13 @@ Kssd is a command-line tool for large-scale sequences sketching and resemblance-
         2.  [Search the queries against the references](#332-search-the-queries-against-the-references)
       
 
-# 1.    Installation 
+# 1 Installation 
 ```
 git clone git@github.com:yhg926/public_kssd.git &&
 cd public_kssd &&
 make 
 ```
-# 2.    Quick-Tutorial
+# 2 Quick-Tutorial
 ```
 cd test_fna;
 #sketch references
