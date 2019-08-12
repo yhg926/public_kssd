@@ -32,8 +32,8 @@ cd test_fna;
 # or you can compute the pairwise distance of references
 ../kssd dist -r reference/ref -o reference reference/qry
 ```
-# 3. For Advanced Users
-## 3.1. K-mer substring space shuffling
+# 3 For Advanced Users
+## 3.1 K-mer substring space shuffling
 ```
 kssd shuffle -k <half_length_of_k-mer> -s <half_length_of_k-mer_substring> -l <dimensionality-reduction_level > -o <shuffled_k-mer_substring_space_file>
 ```
