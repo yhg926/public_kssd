@@ -12,7 +12,11 @@ Kssd is a command-line tool for large-scale sequences sketching and resemblance-
     3.  [Distance estimation](#33-distance-estimation)
         1.  [Reference against references distance](#331-reference-against-references-distance) 
         2.  [Search the queries against the references](#332-search-the-queries-against-the-references)
+<<<<<<< HEAD
 4.  [How to cite](#4-how-to-cite)     
+=======
+4. How to cite(#4-how-to-cite)      
+>>>>>>> 82a5fcbc2028404128bc942fc08142d30a93f4f7
 
 # 1 Installation 
 ```
@@ -93,7 +97,11 @@ The `ref_outdir` and `qry_outdir` are the sketches created in step 2.
   The distance will output to `<outdir>/disntance`
 
 
+<<<<<<< HEAD
 # 4. How to cite
+=======
+# How to cite
+>>>>>>> 82a5fcbc2028404128bc942fc08142d30a93f4f7
 Yi, H., Y. Lin, and W. Jin, Sequences Dimensionality-Reduction by K-mer Substring Space Sampling Enables Effective Resemblance- and Containment-Analysis for Large-Scale omics-data. bioRxiv, 2019: p. 729665. (https://www.biorxiv.org/content/10.1101/729665v1)
 
 
