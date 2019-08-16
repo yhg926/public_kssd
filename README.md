@@ -1,6 +1,6 @@
 # Kssd: K-mer substring space sampling/shuffling Decomposition
 
-Kssd is a command-line tool for large-scale sequences sketching and resemblance- and containment-analysis. It sketches sequences by k-mer substring space sampling/shuffling. It handles DNA sequences of both fasta or fastq format, whether gzipped or not. Kssd run on linux system.
+Kssd is a command-line tool for large-scale sequences sketching and resemblance- and containment-analysis. It sketches sequences by k-mer substring space sampling/shuffling. It handles DNA sequences of both fasta or fastq format, whether gzipped or not. Kssd run on linux system, currently not support for MacOS and Windows OS.
 ### Table of contents
 1.  [Installation](#1-installation)
 2.  [Quick Tutorial](#2-quick-tutorial)
