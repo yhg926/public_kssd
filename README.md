@@ -12,6 +12,7 @@ Kssd is a command-line tool for large-scale sequences sketching and resemblance-
     3.  [Distance estimation](#33-distance-estimation)
         1.  [Reference against references distance](#331-reference-against-references-distance) 
         2.  [Search the queries against the references](#332-search-the-queries-against-the-references)
+		4.	[Combine Queries](#34-combine-queries)
 4.  [How to cite](#4-how-to-cite)     
 
 # 1 Installation 
@@ -92,6 +93,12 @@ The `ref_outdir` and `qry_outdir` are the sketches created in step 2.
   
   The distance will output to `<outdir>/disntance`
 
+##	3.4	Combine Queries
+If you have queries generated from different running batches, you can combine them by:
+```
+kssd dist -o <outdir> <path_to_query_batch1> [<path_to_query_batch2> ...]  
+```
+Make sure all queries batches use the same .shuf file
 
 # 4. How to cite
 

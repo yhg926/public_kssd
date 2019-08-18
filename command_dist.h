@@ -94,4 +94,5 @@ void dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned i
       unsigned int*qry_ctx_ct_list, int num_cof_batch, char (*refname)[PATHLEN], char (*qryfname)[PATHLEN]);
 void koc_dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned int qry_num, unsigned int*ref_ctx_ct_list,
       unsigned int*qry_ctx_ct_list, int num_cof_batch, char (*refname)[PATHLEN], char (*qryfname)[PATHLEN]);
+const char * combine_queries(dist_opt_val_t *opt_val);
 #endif

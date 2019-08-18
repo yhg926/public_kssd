@@ -151,7 +151,12 @@ real_time_mem += mem_usage_stat.shuffled_subctx_arr_sz;
    }
   }
   else if( qryco_dstat_fpath != NULL) {
-      run_stageII(qryco_dstat_fpath, opt_val->p);
+   if( opt_val->num_remaining_args == 1 ){
+       run_stageII(qryco_dstat_fpath, opt_val->p);
+   }
+   else if (opt_val->num_remaining_args > 1){
+    combine_queries(opt_val);
+   }
     }
   else if ( (qrymco_dstat_fpath != NULL) && (opt_val->num_remaining_args > 1 )){
   }
@@ -376,6 +381,7 @@ const char * run_stageI (dist_opt_val_t *opt_val, infile_tab_t *seqfile_stat,
         remove(cofname);
       }
       fclose(com_cofp);
+   free(tmpco);
       fwrite(cof_index_in_cbdco,sizeof(size_t), seqfile_stat->infile_num + 1, indexfp);
       fclose(indexfp);
       free(cof_index_in_cbdco);
@@ -1236,4 +1242,156 @@ infile_tab_t* dist_organize_refpath( dist_opt_val_t *opt_val){
   return organize_infile_list(opt_val->refpath);
  else
   return NULL;
+}
+const char * combine_queries(dist_opt_val_t *opt_val)
+{
+ int p_fit_mem = opt_val->p;
+ const char* co_dir = opt_val->outdir;
+ const char kmerct_list_fname[] = "tmp_kmerct_list";
+ const char fname_fname[] = "tmp_infiles_fname";
+ if(opt_val->abundance){err(errno,"combine_queries(): abundance model not supported yet");}
+ FILE *co_stat_fp;
+ const char *qryco_dstat_fpath = NULL;
+ qryco_dstat_fpath = test_get_fullpath(opt_val->remaining_args[0], co_dstat);
+ if( ( co_stat_fp = fopen(qryco_dstat_fpath,"rb")) == NULL ){
+  err(errno,"combine_queries():%s", qryco_dstat_fpath);
+ }
+ co_dstat_t co_dstat_one, co_dstat_it;
+ fread(&co_dstat_one, sizeof(co_dstat_t), 1, co_stat_fp);
+ if (co_dstat_one.koc) { err(errno,"combine_queries(): abundance model not supported yet"); }
+ char one_kmerct_list_name[PATHLEN];
+ sprintf(one_kmerct_list_name,"%s/%s",co_dir,kmerct_list_fname);
+ FILE *kmerct_list_fp;
+ if( (kmerct_list_fp = fopen(one_kmerct_list_name,"wb") ) == NULL ) {err(errno,"%s",one_kmerct_list_name);}
+ ctx_obj_ct_t * tmp_ct_list = malloc(sizeof(ctx_obj_ct_t) * co_dstat_one.infile_num);
+ fread(tmp_ct_list,sizeof(ctx_obj_ct_t),co_dstat_one.infile_num,co_stat_fp);
+ fwrite(tmp_ct_list,sizeof(ctx_obj_ct_t),co_dstat_one.infile_num,kmerct_list_fp);
+ char one_infilename_name[PATHLEN];
+ sprintf(one_infilename_name,"%s/%s",co_dir,fname_fname);
+ FILE *infilename_name_fp;
+ if( ( infilename_name_fp = fopen(one_infilename_name,"wb") ) == NULL ){err(errno,"%s", one_infilename_name);}
+ char (*tmpname)[PATHLEN] = malloc(PATHLEN * co_dstat_one.infile_num);
+ fread(tmpname,PATHLEN,co_dstat_one.infile_num,co_stat_fp);
+ fwrite(tmpname,PATHLEN,co_dstat_one.infile_num,infilename_name_fp);
+ fclose(co_stat_fp);
+ FILE** com_cofp = malloc( sizeof(FILE*) * co_dstat_one.comp_num);
+  FILE** indexfp = malloc( sizeof(FILE*) * co_dstat_one.comp_num);
+ size_t *index_offset = malloc(sizeof(size_t) * co_dstat_one.comp_num);
+#pragma omp parallel for num_threads(p_fit_mem) schedule(guided)
+ for(int c = 0; c < co_dstat_one.comp_num; c++) {
+  struct stat file_stat;
+  char combined_cof[PATHLEN];
+  sprintf(combined_cof,"%s/combco.%d",co_dir,c);
+  if( (com_cofp[c] = fopen(combined_cof,"wb")) == NULL) err(errno,"%s",combined_cof);
+  sprintf(combined_cof,"%s/combco.%d",opt_val->remaining_args[0],c);
+  stat(combined_cof, &file_stat);
+  unsigned int *tmp_combco = malloc(file_stat.st_size);
+  FILE *com_cofp_it;
+  if( (com_cofp_it = fopen(combined_cof,"rb")) == NULL) err(errno,"%s",combined_cof);
+  fread(tmp_combco, file_stat.st_size, 1, com_cofp_it);
+    fwrite(tmp_combco, file_stat.st_size, 1, com_cofp[c]);
+    fclose(com_cofp_it);
+    free(tmp_combco);
+  char indexfname[PATHLEN];
+  sprintf(indexfname,"%s/combco.index.%d",co_dir,c);
+    if( (indexfp[c] = fopen(indexfname,"wb")) == NULL) err(errno,"%s",indexfname);
+  sprintf(indexfname, "%s/combco.index.%d", opt_val->remaining_args[0], c);
+  stat(indexfname, &file_stat);
+  size_t *tmp_index_combco = malloc(file_stat.st_size);
+  FILE *com_indexfp_it;
+  if((com_indexfp_it = fopen(indexfname,"rb") ) == NULL) err(errno,"%s",indexfname);
+  fread(tmp_index_combco,file_stat.st_size, 1,com_indexfp_it);
+  fwrite(tmp_index_combco,file_stat.st_size, 1,indexfp[c]);
+  index_offset[c] = tmp_index_combco[file_stat.st_size/sizeof(size_t) - 1] ;
+  fclose(com_indexfp_it);
+  free(tmp_index_combco);
+ }
+ for (int i = 1; i< opt_val->num_remaining_args; i++){
+  qryco_dstat_fpath = test_get_fullpath(opt_val->remaining_args[i],co_dstat);
+  if(qryco_dstat_fpath == NULL){
+     printf("%dth query %s is not a valid query: no %s file\n", i, opt_val->remaining_args[i], co_dstat);
+      continue;
+    }
+  else if( ( co_stat_fp = fopen(qryco_dstat_fpath,"rb")) == NULL ){
+     printf("combine_queries(): %dth query can not open %s\n", i, qryco_dstat_fpath);
+   continue;
+   }
+  fread(&co_dstat_it, sizeof(co_dstat_t), 1, co_stat_fp);
+  if(co_dstat_one.shuf_id != co_dstat_it.shuf_id){
+      printf("combine_queries(): %dth shuf_id: %u not match 0th shuf_id: %u\n",i, co_dstat_it.shuf_id, co_dstat_one.shuf_id);
+      fclose(co_stat_fp);
+      continue;
+    }
+  else if (co_dstat_it.koc){
+   printf("combine_queries(): %dth query abundance model not supported yet \n", i);
+      fclose(co_stat_fp);
+      continue;
+  }
+    co_dstat_one.all_ctx_ct += co_dstat_it.all_ctx_ct;
+    co_dstat_one.infile_num += co_dstat_it.infile_num;
+  tmp_ct_list = realloc(tmp_ct_list, sizeof(ctx_obj_ct_t) * co_dstat_it.infile_num);
+  fread(tmp_ct_list,sizeof(ctx_obj_ct_t),co_dstat_it.infile_num,co_stat_fp);
+  fwrite(tmp_ct_list,sizeof(ctx_obj_ct_t),co_dstat_it.infile_num,kmerct_list_fp);
+  tmpname = realloc(tmpname, PATHLEN * co_dstat_it.infile_num ) ;
+  fread(tmpname,PATHLEN,co_dstat_it.infile_num,co_stat_fp);
+  fwrite(tmpname,PATHLEN,co_dstat_it.infile_num,infilename_name_fp);
+    fclose(co_stat_fp);
+#pragma omp parallel for num_threads(p_fit_mem) schedule(guided)
+  for(int c = 0; c < co_dstat_one.comp_num; c++) {
+   char combined_cof_it[PATHLEN];
+   FILE *com_cofp_it;
+   struct stat file_stat;
+   sprintf(combined_cof_it,"%s/combco.%d",opt_val->remaining_args[i],c);
+   stat(combined_cof_it,&file_stat);
+   unsigned int *tmpco = malloc(file_stat.st_size);
+      if( (com_cofp_it = fopen(combined_cof_it,"rb")) == NULL) err(errno,"%s",combined_cof_it);
+   fread(tmpco,file_stat.st_size, 1, com_cofp_it);
+   fwrite(tmpco,file_stat.st_size, 1, com_cofp[c]);
+   fclose(com_cofp_it);
+   free(tmpco);
+   char indexfname_it[PATHLEN];
+   sprintf(indexfname_it,"%s/combco.index.%d",opt_val->remaining_args[i],c);
+   stat(indexfname_it, &file_stat);
+   size_t * tmpindex = malloc(file_stat.st_size);
+   FILE *indexfp_it;
+   if( (indexfp_it = fopen(indexfname_it,"rb")) == NULL) err(errno,"%s",indexfname_it);
+   fread(tmpindex,file_stat.st_size, 1,indexfp_it);
+   fclose(indexfp_it);
+   int tmp_infile_num = file_stat.st_size/sizeof(size_t);
+   for(int i=1; i< tmp_infile_num; i++ ) { tmpindex[i] += index_offset[c];}
+   fwrite( tmpindex + 1, sizeof(size_t), tmp_infile_num - 1, indexfp[c]);
+   index_offset[c] = tmpindex[tmp_infile_num-1];
+  }
+ }
+ fclose(kmerct_list_fp);
+ fclose(infilename_name_fp);
+#pragma omp parallel for num_threads(p_fit_mem) schedule(guided)
+  for(int c = 0; c < co_dstat_one.comp_num; c++) {
+  fclose(com_cofp[c]);
+  fclose(indexfp[c]);
+ }
+ FILE *one_co_stat_fp;
+ char one_stat_name[PATHLEN];
+ sprintf(one_stat_name,"%s/%s",co_dir,co_dstat);
+ if( (one_co_stat_fp = fopen(one_stat_name,"wb")) == NULL) { err(errno,"%s",one_stat_name) ;};
+ fwrite(&co_dstat_one,sizeof(co_dstat_t),1,one_co_stat_fp);
+ struct stat file_stat;
+ stat(one_kmerct_list_name, &file_stat);
+ tmp_ct_list = realloc(tmp_ct_list, file_stat.st_size);
+ if( (kmerct_list_fp = fopen(one_kmerct_list_name,"rb") ) == NULL ) {err(errno,"%s",one_kmerct_list_name);}
+ fread(tmp_ct_list,file_stat.st_size,1,kmerct_list_fp);
+ fwrite(tmp_ct_list,file_stat.st_size,1,one_co_stat_fp);
+ stat(one_infilename_name,&file_stat);
+ tmpname = realloc(tmpname,file_stat.st_size);
+ if( (infilename_name_fp = fopen(one_infilename_name,"rb") ) == NULL ){err(errno,"%s", one_infilename_name);}
+ fread(tmpname,file_stat.st_size,1,infilename_name_fp);
+ fwrite(tmpname,file_stat.st_size,1,one_co_stat_fp);
+ fclose(one_co_stat_fp);
+ remove(one_kmerct_list_name);
+ remove(one_infilename_name);
+ free(tmp_ct_list);
+ free(tmpname);
+ free(com_cofp);
+  free(indexfp);
+ return co_dir;
 }
