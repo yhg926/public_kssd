@@ -17,7 +17,7 @@ Kssd is a command-line tool for large-scale sequences sketching and resemblance-
 
 # 1 Installation 
 ```
-git clone git@github.com:yhg926/public_kssd.git &&
+git clone https://github.com/yhg926/public_kssd.git &&
 cd public_kssd &&
 make 
 ```
