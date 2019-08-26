@@ -33,6 +33,26 @@ cd test_fna;
 # or you can compute the pairwise distance of references
 ../kssd dist -r reference/ref -o reference reference/qry
 ```
+Here is the explaination of the output file "distance.out" (please see 4.  [How to cite](#4-how-to-cite) for the refered equations)
+
+Column | Explaination
+---|---
+Qry | query
+Ref  | reference
+Shared_k\|Ref_s\|Qry_s | number of shared k-mer between the sketches of the reference and the query\|reference sketch-size\|query sketch-size 
+Jaccard|Jaccard-coefficient (Eq. 2)
+MashD| mash distance  (Eq. 4)
+ContainmentM| containment-measurement(Eq. 3)
+AafD| aaf-distance (Eq. 5) 
+Jaccard_CI| 0.95 confidence intervel for Jaccard-coefficient
+MashD_CI| 0.95 confidence intervel for mash distance
+ContainmentM_CI| 0.95 confidence intervel for containment-measurement
+AafD_CI| 0.95 confidence intervel for aaf-distance
+P-value(J)| p-value for Jaccard-coefficient
+P-value(C)| p-value for containment-measurement
+FDR(J)| false discover rate for Jaccard-coefficient
+FDR(C)| false discover rate for containment-measurement
+
 # 3 For Advanced Users
 ## 3.1 K-mer substring space shuffling
 ```
