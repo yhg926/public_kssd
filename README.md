@@ -48,8 +48,8 @@ Jaccard_CI| 0.95 confidence intervel for Jaccard-coefficient
 MashD_CI| 0.95 confidence intervel for mash distance
 ContainmentM_CI| 0.95 confidence intervel for containment-measurement
 AafD_CI| 0.95 confidence intervel for aaf-distance
-P-value(J)| p-value for Jaccard-coefficient
-P-value(C)| p-value for containment-measurement
+P-value(J)| p-value for Jaccard-coefficient(Eq. 14)
+P-value(C)| p-value for containment-measurement(Eq. 14)
 FDR(J)| false discover rate for Jaccard-coefficient
 FDR(C)| false discover rate for containment-measurement
 
