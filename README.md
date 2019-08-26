@@ -33,9 +33,9 @@ cd test_fna;
 # or you can compute the pairwise distance of references
 ../kssd dist -r reference/ref -o reference reference/qry
 ```
-Here is the explaination of the output file "distance.out" (please see [How to cite](#4-how-to-cite) for the referred equations)
+Here is the explanation of the output file "distance.out" (please see [How to cite](#4-how-to-cite) for the referred equations)
 
-Column | Explaination
+Column | Explanation
 ---|---
 Qry | query
 Ref  | reference
