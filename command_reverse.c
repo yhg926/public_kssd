@@ -37,6 +37,7 @@ static struct argp_option opt_reverse[] =
  {"shufFile",'L',"<path>",0,"provide .shuf file.\v"},
  {"outdir",'o',"<path>",0,"path for recovered k-mer files.\v"},
  {"threads",'p',"INT",0,"threads num.\v"},
+ {"byreads",'b',0,0,"recover k-mer from sketched reads .\v"},
   { 0 }
 };
 static char doc_reverse[] =
@@ -49,6 +50,8 @@ reverse_opt_val_t reverse_opt_val =
 {
 "",
 ".",
+1,
+false,
 };
 static error_t parse_reverse(int key, char* arg, struct argp_state* state) {
   struct arg_reverse* reverse = state->input;
@@ -87,6 +90,10 @@ static error_t parse_reverse(int key, char* arg, struct argp_state* state) {
 #endif
     }
     break;
+  case 'b':
+  {
+   reverse_opt_val.byreads = true;
+  }
   case ARGP_KEY_ARGS:
     {
     reverse_opt_val.num_remaining_args = state->argc - state->next;
@@ -132,7 +139,81 @@ int cmd_reverse(struct argp_state* state)
   free(argv[0]);
   argv[0] = argv0;
   state->next += argc - 1;
-  return co_reverse2kmer(&reverse_opt_val);
+ if(reverse_opt_val.byreads)
+  return co_rvs2kmer_byreads(&reverse_opt_val );
+ else
+   return co_reverse2kmer(&reverse_opt_val);
+}
+int co_rvs2kmer_byreads( reverse_opt_val_t *opt_val ){
+  dim_shuffle_t* shuf_arr = read_dim_shuffle_file(opt_val->shufile);
+ int shuf_arr_len = 1LLU << (4 * shuf_arr->dim_shuffle_stat.subk) ;
+ unsigned int rev_shuf_arr[MIN_SUBCTX_DIM_SMP_SZ];
+ int count = 0;
+  for(unsigned int i=0; i< shuf_arr_len; i++) {
+    if( shuf_arr->shuffled_dim[i] < MIN_SUBCTX_DIM_SMP_SZ ){
+      rev_shuf_arr[shuf_arr->shuffled_dim[i]] = i ;
+      count++;
+    }
+  }
+ if(count != MIN_SUBCTX_DIM_SMP_SZ) err(errno,"count %d not match MIN_SUBCTX_DIM_SMP_SZ %d",count,MIN_SUBCTX_DIM_SMP_SZ);
+ int comp_code_bits = shuf_arr->dim_shuffle_stat.k - shuf_arr->dim_shuffle_stat.drlevel > COMPONENT_SZ
+                      ? 4*(shuf_arr->dim_shuffle_stat.k - shuf_arr->dim_shuffle_stat.drlevel - COMPONENT_SZ ) : 0 ;
+ int inner_ctx_bits = shuf_arr->dim_shuffle_stat.subk * 4;
+ int half_outer_ctx_bits = (shuf_arr->dim_shuffle_stat.k - shuf_arr->dim_shuffle_stat.subk) *2 ;
+ int pf_bits = ( shuf_arr->dim_shuffle_stat.subk - shuf_arr->dim_shuffle_stat.drlevel ) * 4;
+ int TL = shuf_arr->dim_shuffle_stat.k * 2;
+ if (!(opt_val->num_remaining_args == 1 ))
+  err(errno,"need speficy one query path");
+ const char *qryco_dstat_fpath = NULL;
+ qryco_dstat_fpath = test_get_fullpath(opt_val->remaining_args[0],co_dstat);
+ if( qryco_dstat_fpath == NULL )
+ err(errno,"%s is not a valid query folder",opt_val->remaining_args[0]);
+ FILE *qry_co_stat_fp;
+ if (( qry_co_stat_fp = fopen(qryco_dstat_fpath,"rb")) == NULL) err(errno,"qry co stat file:%s",qryco_dstat_fpath);
+ char *qryco_dname = opt_val->remaining_args[0];
+ co_dstat_t co_qry_dstat;
+ fread( &co_qry_dstat, sizeof(co_dstat_t), 1, qry_co_stat_fp);
+ FILE *cbd_fcode_comp_index_fp;
+ char co_cbd_fcode[PATHLEN];char co_cbd_index_fcode[PATHLEN];
+ struct stat fstat;
+ sprintf(co_cbd_index_fcode,"%s/combco.index.0",qryco_dname);
+ stat(co_cbd_index_fcode, &fstat);
+ llong readn = fstat.st_size/sizeof(size_t) - 1 ;
+ size_t **cbd_fcode_index_mem = (size_t **) malloc( co_qry_dstat.comp_num * sizeof(size_t *));
+ FILE **cbd_fcode_comp_fp = (FILE **) malloc(co_qry_dstat.comp_num * sizeof(FILE *)) ;
+ for ( int j = 0; j < co_qry_dstat.comp_num; j++ ){
+  cbd_fcode_index_mem[j] = (size_t *) malloc( (readn+1)* sizeof(size_t));
+  sprintf(co_cbd_index_fcode,"%s/combco.index.%d",qryco_dname,j);
+  if( (cbd_fcode_comp_index_fp = fopen(co_cbd_index_fcode,"rb"))==NULL) err(errno,"co_rvs2kmer_btreads()::%s",co_cbd_index_fcode);
+  fread(cbd_fcode_index_mem[j],sizeof(size_t),readn+1,cbd_fcode_comp_index_fp);
+  fclose(cbd_fcode_comp_index_fp);
+  sprintf(co_cbd_fcode,"%s/combco.%d",qryco_dname,j);
+  if( (cbd_fcode_comp_fp[j] = fopen(co_cbd_fcode,"rb"))==NULL) err(errno,"co_rvs2kmer_btreads()::%s[%d]",co_cbd_fcode,j);
+ }
+ char *kstring = malloc(TL + 1);
+ kstring[TL] = '\0';
+ unsigned int ind;
+ for(llong n=0; n< readn;n++){
+  printf(">read %llu\n", n+1);
+  for ( int j = 0; j < co_qry_dstat.comp_num; j++ ){
+   for ( llong k=0; k< cbd_fcode_index_mem[j][n+1]-cbd_fcode_index_mem[j][n]; k++){
+    fread(&ind,sizeof(unsigned int),1,cbd_fcode_comp_fp[j]);
+    llong unituple = core_reverse2unituple(ind,j,comp_code_bits,pf_bits,inner_ctx_bits,half_outer_ctx_bits,rev_shuf_arr);
+    for(int i=0; i<TL;i++){
+     kstring[TL-i-1] = Mapbase[unituple % 4] ;
+     unituple >>= 2 ;
+    }
+    printf("%s\n",kstring);
+   }
+  }
+ }
+ for ( int j = 0; j < co_qry_dstat.comp_num; j++ ){
+  fclose(cbd_fcode_comp_fp[j]);
+   free(cbd_fcode_index_mem[j]);
+ }
+ free(cbd_fcode_index_mem);
+ free(cbd_fcode_comp_fp);
+ return 1;
 }
 typedef unsigned int ctx_obj_ct_t;
 int co_reverse2kmer(reverse_opt_val_t *opt_val)
@@ -198,7 +279,7 @@ int co_reverse2kmer(reverse_opt_val_t *opt_val)
    char *kstring = malloc(TL + 1);
    kstring[TL] = '\0';
    for(int n = 0; n < fco_pos[k+1] - fco_pos[k]; n++){
-    int ind = cbd_fcode_mem[ fco_pos[k] + n ];
+    unsigned int ind = cbd_fcode_mem[ fco_pos[k] + n ];
     kmer[k][filled_len[k] + n] = core_reverse2unituple(ind,j,comp_code_bits,pf_bits,inner_ctx_bits,half_outer_ctx_bits,rev_shuf_arr);
    }
    filled_len[k] += (fco_pos[k+1] - fco_pos[k]) ;

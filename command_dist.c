@@ -50,6 +50,9 @@ typedef int mco_co_dist_t[BIN_SZ];
 typedef unsigned int ctx_obj_ct_t;
 static inline unsigned int * mco_co_mmpdist_core(gidobj_t** unit_arrmco, char *co_fcode_in, unsigned int *ctx_obj_ct_in );
 static inline void mco_co_dist_core(gidobj_t** unit_arrmco, char *co_fcode_in, int bin_sz, mco_co_dist_t shared_ctx_num_in);
+#define LINE_LEN 1024
+typedef struct prt_line { int len; char line[LINE_LEN]; } prt_line_t ;
+static inline void output_ctrl (unsigned int X_size, unsigned int XnY_size, print_ctrl_t* outfield, char *rname, prt_line_t* linebuf ) ;
 int dist_dispatch(dist_opt_val_t *opt_val)
 {
  logfp = fpathopen(opt_val->outdir, logfpath,"a") ;
@@ -113,7 +116,7 @@ real_time_mem += mem_usage_stat.shuffled_subctx_arr_sz;
  {
   const char *qryco_dstat_fpath = NULL;
   const char *qrymco_dstat_fpath = NULL;
-  if(opt_val->num_remaining_args >0){
+  if((opt_val->pipecmd[0]=='\0') && (opt_val->num_remaining_args >0)){
    qryco_dstat_fpath = test_get_fullpath(opt_val->remaining_args[0],co_dstat);
    qrymco_dstat_fpath = test_get_fullpath(opt_val->remaining_args[0],mco_dstat);
   }
@@ -166,7 +169,7 @@ real_time_mem += mem_usage_stat.shuffled_subctx_arr_sz;
         qry_fmt_count = infile_fmt_count(infile_stat);
         bool is_valid_fas_fq_in = (infile_stat->infile_num != 0) &&
           (qry_fmt_count->fasta + qry_fmt_count->fastq == infile_stat->infile_num );
-        if(is_valid_fas_fq_in){
+        if(is_valid_fas_fq_in || (opt_val->pipecmd[0] != '\0') ){
      const char * dist_rslt_dir = opt_val->outdir;
         const char *dist_co_dir = mk_dist_rslt_dir(dist_rslt_dir,"qry");
      int *shuffled_refname_ind = shuffleN( infile_stat->infile_num, 0 );
@@ -296,7 +299,7 @@ const char * run_stageI (dist_opt_val_t *opt_val, infile_tab_t *seqfile_stat,
    printf("decomposing %s\n",seqfname) ;
    llong *co;
    if(isOK_fmt_infile(seqfname,fastq_fmt,FQ_FMT_SZ)){
-    co = fastq2koc(seqfname,CO[tid],opt_val->kmerqlty);
+    co = fastq2koc(seqfname,CO[tid],opt_val->pipecmd, opt_val->kmerqlty);
     ctx_ct_list[i] = write_fqkoc2file(cofname,co);
    }
    else{
@@ -334,6 +337,13 @@ const char * run_stageI (dist_opt_val_t *opt_val, infile_tab_t *seqfile_stat,
     free(cof_index_in_cbdco);
    }
  }
+ if(opt_val->byread){
+  for(int i = 0; i< seqfile_stat->infile_num; i++){
+   char* seqfname = seqfile_stat->organized_infile_tab[ shuffled_seqfname_ind[i] ].fpath;
+   printf("decomposing %s by reads\n",seqfname) ;
+   reads2mco(seqfname, co_dir, opt_val->pipecmd);
+  }
+ }
  else {
 #pragma omp parallel for num_threads(p_fit_mem) reduction(+:all_ctx_ct) schedule(guided)
    for(int i = 0; i< seqfile_stat->infile_num; i++){
@@ -346,12 +356,12 @@ const char * run_stageI (dist_opt_val_t *opt_val, infile_tab_t *seqfile_stat,
       sprintf(cofname,"%s/%d.co",co_dir,i);
       printf("decomposing %s\n",seqfname) ;
       llong *co;
-      if(isOK_fmt_infile(seqfname,fastq_fmt,FQ_FMT_SZ)){
-    co = fastq2co(seqfname,CO[tid],opt_val->kmerqlty,opt_val->kmerocrs);
+      if(isOK_fmt_infile(seqfname,fastq_fmt,FQ_FMT_SZ) || opt_val->pipecmd[0]!='\0'){
+    co = fastq2co(seqfname,CO[tid],opt_val->pipecmd,opt_val->kmerqlty,opt_val->kmerocrs);
         ctx_ct_list[i] = write_fqco2file(cofname,co);
        }
        else{
-     co = fasta2co(seqfname,CO[tid]);
+     co = fasta2co(seqfname,CO[tid],opt_val->pipecmd);
         ctx_ct_list[i] = wrt_co2cmpn_use_inn_subctx(cofname,co);
        }
    all_ctx_ct += ctx_ct_list[i] ;
@@ -446,8 +456,9 @@ void run_stageII(const char * co_dstat_fpath, int p_fit_mem)
    free((char*)dist_mco_dir);
    free((char*)mco_dstat_fpath);
 }
+int alp_size = 4 ;
 static ctx_obj_ct_t initial_dist[BIN_SZ];
-static int ref_seq_num,qry_seq_num,kmerlen,dim_reduct_len;
+static int ref_seq_num,qry_seq_num,kmerlen,dim_reduct_len ;
 void mco_co_dist( char *refmco_dname, char *qryco_dname, const char *distout_dir, int p_fit_mem)
 {
  fprintf(logfp,"run mco_co_dist(), %d threads used\n",p_fit_mem);
@@ -700,7 +711,7 @@ void mco_cbd_co_dist(dist_opt_val_t *opt_val_in)
   sprintf(distf, "%s/distance.out", distout_dir);
   fprintf(logfp,"distance output to : %s\n",distf);
   printf("distance output to : %s\n",distf);
- dist_print_nobin(distout_dir,ref_seq_num, qry_seq_num, ref_ctx_ct_list, qry_ctx_ct_list,num_cof_batch,mcofname, cofname);
+ dist_print_nobin(distout_dir,ref_seq_num, qry_seq_num, ref_ctx_ct_list, qry_ctx_ct_list,num_cof_batch,mcofname, cofname, opt_val_in);
   free(ref_ctx_ct_list);
   free(qry_ctx_ct_list);
   free(mcofname);
@@ -756,8 +767,7 @@ void mco_cbd_koc_compatible_dist(dist_opt_val_t *opt_val_in)
     close(dist_bfp);
     dist_bfp = open(onedist,O_RDWR|O_CREAT, 0600) ;
     if (dist_bfp == -1) err(errno,"mco_cbd_co_dist()::%s",onedist);
-  }
-  else{
+  }else{
     errno = EEXIST;
     err(errno,"mco_cbd_co_dist()::%s",onedist);
   }
@@ -859,20 +869,24 @@ void mco_cbd_koc_compatible_dist(dist_opt_val_t *opt_val_in)
   koc_dist_print_nobin(distout_dir,ref_seq_num, qry_seq_num, ref_ctx_ct_list, qry_ctx_ct_list,num_cof_batch,mcofname, cofname);
  }
  else{
-    size_t disf_sz = (size_t)mco_dstat_readin.infile_num*co_dstat_readin.infile_num*sizeof(ctx_obj_ct_t) ;
-    if(ftruncate(dist_bfp, disf_sz) == -1) err(errno,"mco_cbd_co_dist()::ftruncate");
-    close(dist_bfp);
-    dist_bfp = open(onedist,O_RDWR, 0600);
-    if (dist_bfp == -1) err(errno,"mco_cbd_koc_dist()::%s",onedist);
-    ctx_obj_ct_t *ctx_obj_ct = mmap(NULL,disf_sz,PROT_READ | PROT_WRITE,MAP_SHARED,dist_bfp,0);
-    if(ctx_obj_ct == MAP_FAILED) err(errno,"ctx_obj_ct mmap error");
-    close(dist_bfp);
     int num_unit_mem = mem_limit / (mco_dstat_readin.infile_num*sizeof(ctx_obj_ct_t) * page_sz);
     if(num_unit_mem < 1) err(errno,"at least %fG memory needed to map ./onedist, specify more memory use -m",
       (float)mco_dstat_readin.infile_num*sizeof(ctx_obj_ct_t) * page_sz/1073741824 );
     int num_cof_batch = num_unit_mem*page_sz;
+  if( opt_val_in->shared_kmerpath[0] != '\0'){
+   dist_print_nobin(distout_dir,ref_seq_num, qry_seq_num, ref_ctx_ct_list, qry_ctx_ct_list,num_cof_batch,mcofname, cofname,opt_val_in);
+   return;
+  }
     size_t unitsz_distf_mapped = (size_t)num_cof_batch * mco_dstat_readin.infile_num * sizeof(ctx_obj_ct_t) ;
     int num_mapping_distf = co_dstat_readin.infile_num / num_cof_batch ;
+  size_t disf_sz = (size_t)mco_dstat_readin.infile_num*co_dstat_readin.infile_num*sizeof(ctx_obj_ct_t) ;
+    if(ftruncate(dist_bfp, disf_sz) == -1) err(errno,"mco_cbd_co_dist()::ftruncate");
+    close(dist_bfp);
+  dist_bfp = open(onedist,O_RDWR, 0600);
+    if (dist_bfp == -1) err(errno,"mco_cbd_koc_dist()::%s",onedist);
+    ctx_obj_ct_t *ctx_obj_ct = mmap(NULL,disf_sz,PROT_READ | PROT_WRITE,MAP_SHARED,dist_bfp,0);
+    if(ctx_obj_ct == MAP_FAILED) err(errno,"ctx_obj_ct mmap error");
+    close(dist_bfp);
     for(int b=0;b<=num_mapping_distf;b++){
       if(b==num_mapping_distf){
         bnum_infile = co_dstat_readin.infile_num % num_cof_batch ;
@@ -933,7 +947,7 @@ void mco_cbd_koc_compatible_dist(dist_opt_val_t *opt_val_in)
     free(fco_pos);
     fprintf(logfp,"distance output to : %s\n",distf);
     printf("distance output to : %s\n",distf);
-  dist_print_nobin(distout_dir,ref_seq_num, qry_seq_num, ref_ctx_ct_list, qry_ctx_ct_list,num_cof_batch,mcofname, cofname);
+  dist_print_nobin(distout_dir,ref_seq_num, qry_seq_num, ref_ctx_ct_list, qry_ctx_ct_list,num_cof_batch,mcofname, cofname,opt_val_in);
  }
  free(mco_offset_index);
   free(mco_bin_index);
@@ -1016,7 +1030,6 @@ void fname_dist_print(int ref_bin_code, int qry_fcode, const char *distout_dir, 
  CI95_j_prim1, CI95_j_prim2, CI95_c_prim1, CI95_c_prim2,
  CI95_Dm_prim1,CI95_Dm_prim2,CI95_Da_prim1,CI95_Da_prim2;
  int Min_XY_size, X_size, Y_size, XnY_size, XuY_size, X_XnY_size, Y_XnY_size ;
- int alp_size = 4;
  for(llong i = 0;i < s.st_size/sizeof(ctx_obj_ct_t); i++) {
   X_size = ref_ctx_ct_list[ref_bin_code*BIN_SZ + i];
   Y_size = qry_ctx_ct_list[qry_fcode];
@@ -1077,7 +1090,6 @@ void koc_dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsign
   CI95_j_prim1, CI95_j_prim2, CI95_c_prim1, CI95_c_prim2,
   CI95_Dm_prim1,CI95_Dm_prim2,CI95_Da_prim1,CI95_Da_prim2;
   int Min_XY_size, X_size, Y_size, XnY_size, XuY_size, X_XnY_size, Y_XnY_size ;
-  int alp_size = 4;
   int num_mapping_distf = qry_num / num_cof_batch; int bnum_infile;
  double abundence_rowsum;
   for(int b=0;b<=num_mapping_distf;b++){
@@ -1138,10 +1150,11 @@ void koc_dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsign
   }
   fclose(distfp);
 }
-void dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned int qry_num, unsigned int*ref_ctx_ct_list,
-      unsigned int*qry_ctx_ct_list, int num_cof_batch, char (*refname)[PATHLEN], char (*qryfname)[PATHLEN])
+void dist_print_nobin (const char *distout_dir,unsigned int ref_num, unsigned int qry_num, unsigned int*ref_ctx_ct_list,
+      unsigned int*qry_ctx_ct_list, int num_cof_batch, char (*refname)[PATHLEN], char (*qryfname)[PATHLEN],dist_opt_val_t *opt_val)
 {
-  sprintf(full_distfcode,"%s/sharedk_ct.dat",distout_dir);
+ if( opt_val->shared_kmerpath[0] != '\0') strcpy(full_distfcode, opt_val->shared_kmerpath );
+  else sprintf(full_distfcode,"%s/sharedk_ct.dat",distout_dir);
   int fd;
   struct stat s;
   fd = open (full_distfcode, O_RDONLY);
@@ -1150,19 +1163,33 @@ void dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned i
   ctx_obj_ct_t * ctx_obj_ct = mmap(0, s.st_size , PROT_READ, MAP_PRIVATE, fd, 0);
   check ( ctx_obj_ct == MAP_FAILED, "mmap %s failed: %s", full_distfcode, strerror (errno));
   close(fd);
+ int p_fit_mem= opt_val->p;
+ prt_line_t * prt_buf = malloc(ref_num * sizeof(prt_line_t));
  char distf[PATHLEN];
   sprintf(distf, "%s/distance.out", distout_dir);
- FILE *distfp = fopen(distf,"a") ;
+ FILE *distfp = fopen(distf,"w") ;
   if( distfp == NULL ) err(errno,"dist_print_nobin():%s",distf);
- fprintf(distfp,"Qry\tRef\tShared_k|Ref_s|Qry_s\tJaccard\tMashD\tContainmentM\tAafD"
-  "\tJaccard_CI\tMashD_CI\tContainmentM_CI\tAafD_CI\tP-value(J)\tP-value(C)\tFDR(J)\tFDR(C)\n");
- double jac_ind,contain_ind,Dm,Da,P_K_in_X_XnY, P_K_in_Y_XnY,
-  j_prim, c_prim, sd_j_prim, sd_c_prim,
-  CI95_j_prim1, CI95_j_prim2, CI95_c_prim1, CI95_c_prim2,
-  CI95_Dm_prim1,CI95_Dm_prim2,CI95_Da_prim1,CI95_Da_prim2;
-  int Min_XY_size, X_size, Y_size, XnY_size, XuY_size, X_XnY_size, Y_XnY_size ;
-  int alp_size = 4;
  int num_mapping_distf = qry_num / num_cof_batch; int bnum_infile;
+ print_ctrl_t outfield;
+ outfield.metric = opt_val->metric ;
+ outfield.pfield = opt_val->outfields;
+ outfield.correction = opt_val->correction;
+ outfield.dthreshold = opt_val->mut_dist_max;
+ outfield.cmprsn_num = ref_num*qry_num;
+#define MAX_CNAME_SIZE 30
+ char header[2][3][MAX_CNAME_SIZE] = {
+  {"Jaccard\tMashD","P-value(J)\tFDR(J)","Jaccard_CI\tMashD_CI" },
+  {"ContainmentM\tAafD","P-value(C)\tFDR(C)","ContainmentM_CI\tAafD_CI" }
+ };
+ fprintf(distfp,"Qry\tRef\tShared_k|Ref_s|Qry_s");
+ for( int i = 0 ; i<= (int)outfield.pfield ; i++)
+  fprintf(distfp,"\t%s", header[outfield.metric][i]);
+ fprintf(distfp,"\n");
+#define NREF 1024
+ int N_max = opt_val->num_neigb;
+ if( (N_max > NREF) || (N_max > ref_num) ) { err(errno,"neighborN_max %d should smaller than NREF %d and ref_num %d",N_max,NREF,ref_num); } ;
+ typedef struct { double metric; int rid; } Nref_stuct;
+ Nref_stuct bestNref[NREF];
  for(int b=0;b<=num_mapping_distf;b++){
     if(b==num_mapping_distf){
       bnum_infile = qry_num % num_cof_batch ;
@@ -1170,58 +1197,100 @@ void dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned i
     }else bnum_infile = num_cof_batch;
     size_t maplength = (size_t)bnum_infile * ref_num * sizeof(ctx_obj_ct_t);
   for(int qid = 0; qid < bnum_infile; qid++) {
-   Y_size = qry_ctx_ct_list[b*num_cof_batch + qid];
+   outfield.Y_size = qry_ctx_ct_list[b*num_cof_batch + qid];
+   outfield.qname = qryfname[b*num_cof_batch + qid];
+   outfield.qry_len = strlen(outfield.qname);
+   llong offset = ((llong)b*num_cof_batch + qid)*ref_num;
+   if( N_max ) {
+    for (int i=0; i< N_max ;i++ ) bestNref[i] = (Nref_stuct){0, -1};
     for(int rid = 0; rid < ref_num; rid++) {
-      X_size = ref_ctx_ct_list[rid];
-      Min_XY_size = X_size < Y_size ? X_size : Y_size ;
-      XnY_size = ctx_obj_ct[((llong)b*num_cof_batch + qid)*ref_num + rid ];
-      XuY_size = X_size + Y_size - XnY_size ;
-      X_XnY_size = X_size - XnY_size;
-      Y_XnY_size = Y_size- XnY_size;
-      jac_ind = (double)XnY_size / XuY_size;
-      contain_ind = (double)XnY_size / Min_XY_size ;
-      Dm = jac_ind == 1? 0: -log(2*jac_ind/(1+jac_ind)) / kmerlen ;
-      Da = contain_ind== 1? 0: -log(contain_ind) / kmerlen ;
-      P_K_in_X_XnY = 1 - pow( (1- 1/pow(alp_size,(kmerlen - dim_reduct_len) )), X_XnY_size );
-      P_K_in_Y_XnY = 1 - pow( (1- 1/pow(alp_size,(kmerlen - dim_reduct_len) )), Y_XnY_size );
-      double rs = P_K_in_X_XnY * P_K_in_Y_XnY * ( X_XnY_size + Y_XnY_size )
-              /(P_K_in_X_XnY + P_K_in_Y_XnY - 2*P_K_in_X_XnY * P_K_in_Y_XnY);
-      j_prim = ((double)XnY_size - rs) / XuY_size ;
-      c_prim = ((double)XnY_size - rs) / Min_XY_size ;
-      sd_j_prim = pow(j_prim*(1 - j_prim) / XuY_size, 0.5) ;
-      sd_c_prim = pow(c_prim*(1 - c_prim) / Min_XY_size,0.5) ;
-      CI95_j_prim1 = j_prim - 1.96*sd_j_prim;
-      CI95_j_prim2 = j_prim + 1.96*sd_j_prim;
-      CI95_c_prim1 = c_prim - 1.96*sd_c_prim;
-      CI95_c_prim2 = c_prim + 1.96*sd_c_prim;
-      CI95_Dm_prim1 = CI95_j_prim2 == 1? 0:-log(2*CI95_j_prim2/(1+CI95_j_prim2)) / kmerlen ;
-      CI95_Dm_prim2 = CI95_j_prim1 == 1? 0:-log(2*CI95_j_prim1/(1+CI95_j_prim1)) / kmerlen ;
-      CI95_Da_prim1 = CI95_c_prim2 == 1? 0:-log(CI95_c_prim2) / kmerlen ;
-      CI95_Da_prim2 = CI95_c_prim1 == 1? 0:-log(CI95_c_prim1) / kmerlen ;
-      double pv_j_prim = 0.5 * erfc( j_prim / sd_j_prim * pow(0.5,0.5) );
-      double pv_c_prim = 0.5 * erfc( c_prim/sd_c_prim * pow(0.5,0.5) );
-      double qv_j_prim = pv_j_prim * ref_seq_num*qry_seq_num ;
-      double qv_c_prim = pv_c_prim * ref_seq_num*qry_seq_num ;
-    fprintf(distfp,"%s\t%s\t%u-%u|%u|%u\t%lf\t%lf\t%lf\t%lf\t[%lf,%lf]\t[%lf,%lf]\t[%lf,%lf]\t[%lf,%lf]\t%E\t%E\t%E\t%E\n",
-         qryfname[b*num_cof_batch + qid],refname[rid],XnY_size,(unsigned int)rs,X_size,Y_size,jac_ind,Dm,
-          contain_ind,Da,CI95_j_prim1,CI95_j_prim2,CI95_Dm_prim1,CI95_Dm_prim2,CI95_c_prim1,
-          CI95_c_prim2,CI95_Da_prim1,CI95_Da_prim2,pv_j_prim,pv_c_prim,qv_j_prim,qv_c_prim);
+     unsigned int X_size = ref_ctx_ct_list[rid];
+         unsigned int XnY_size = ctx_obj_ct[offset + rid];
+         double metric = outfield.metric == Ctm ?
+        (double) XnY_size / (X_size < outfield.Y_size ? X_size : outfield.Y_size) :
+        (double) XnY_size / (X_size + outfield.Y_size - XnY_size) ;
+     for(int i = N_max - 1 ; i>=0; i-- ){
+      if(metric > bestNref[i].metric){
+        bestNref[i+1] = bestNref[i];
+        bestNref[i] = (Nref_stuct){ metric, rid };
+      }
+      else break;
+     }
     }
+#pragma omp parallel for num_threads(p_fit_mem) schedule(guided)
+    for( int i = 0 ; i< N_max;i++ ){
+     if (bestNref[i].rid != -1)
+       output_ctrl( ref_ctx_ct_list[ bestNref[i].rid ], ctx_obj_ct[offset + bestNref[i].rid], &outfield, refname[bestNref[i].rid], &prt_buf[i]);
+     else prt_buf[i].len = 0 ;
+    }
+    for( int i = 0 ; i< N_max;i++ )
+          if(prt_buf[i].len >1) fwrite(prt_buf[i].line, prt_buf[i].len, 1, distfp);;
+   }
+   else {
+#pragma omp parallel for num_threads(p_fit_mem) schedule(guided)
+    for(int rid = 0; rid < ref_num; rid++)
+     output_ctrl( ref_ctx_ct_list[ rid ], ctx_obj_ct[ offset + rid ], &outfield, refname[rid], &prt_buf[rid]);
+    for(int rid = 0; rid < ref_num; rid++)
+     if(prt_buf[rid].len >1) fwrite(prt_buf[rid].line, prt_buf[rid].len, 1, distfp);;
+   }
   }
   munmap(ctx_obj_ct + (size_t)b*num_cof_batch*ref_num, maplength);
  }
  fclose(distfp);
- remove(full_distfcode);
+  free(prt_buf);
+ if(!opt_val->keep_shared_kmer) remove(full_distfcode);
+}
+#define GET_MATRIC(X,Y) ( (X) == Jcd ? 1 / (2*(Y)) + 0.5 : 1 / (Y) )
+static inline void output_ctrl (unsigned int X_size, unsigned int XnY_size, print_ctrl_t* outfield, char *rname, prt_line_t* linebuf ){
+ double rs = 0;
+ if(outfield->correction){
+  unsigned int X_XnY_size = X_size - XnY_size;
+  unsigned int Y_XnY_size = outfield->Y_size - XnY_size;
+  double P_K_in_X_XnY = 1 - pow( (1- 1/pow(alp_size,(kmerlen - dim_reduct_len) )), X_XnY_size );
+  double P_K_in_Y_XnY = 1 - pow( (1- 1/pow(alp_size,(kmerlen - dim_reduct_len) )), Y_XnY_size );
+  rs = P_K_in_X_XnY * P_K_in_Y_XnY * ( X_XnY_size + Y_XnY_size )
+       /(P_K_in_X_XnY + P_K_in_Y_XnY - 2*P_K_in_X_XnY * P_K_in_Y_XnY);
+ }
+ unsigned int tmp = outfield->metric == Jcd ? X_size + outfield->Y_size - XnY_size
+                   :(X_size < outfield->Y_size ? X_size : outfield->Y_size);
+ double metric = ((double)XnY_size - rs) / tmp;
+ double dist = log( GET_MATRIC(outfield->metric,metric) ) / kmerlen;
+ if (dist > 1) dist = 1 ;
+  if( dist > outfield->dthreshold ) { linebuf->len = 0 ; return; };
+#define LST_PRT_LEN 27
+ snprintf(linebuf->line,LINE_LEN,"%s\t%s\t%u-%u|%u|%u\t%.6lf\t%.6lf",outfield->qname,rname,XnY_size,(unsigned int)rs,X_size, outfield->Y_size, metric, dist);
+ linebuf->len = LST_PRT_LEN + outfield->qry_len + strlen(linebuf->line + LST_PRT_LEN + outfield->qry_len);
+ if(outfield->pfield > Dst) {
+  double sd = pow(metric*(1 - metric) / tmp, 0.5) ;
+  double pv = 0.5 * erfc( metric / sd * pow(0.5,0.5) ) ;
+  snprintf(linebuf->line + linebuf->len, LINE_LEN - linebuf->len,"\t%E\t%E", pv, pv * outfield->cmprsn_num );
+  linebuf->len += 4 + strlen(linebuf->line + linebuf->len + 4);
+  if(outfield->pfield >Qv){
+   double CI95_mtrc_1 = metric - 1.96*sd;
+   double CI95_mtrc_2 = metric + 1.96*sd;
+   double CI95_dist_1 = log( GET_MATRIC(outfield->metric,CI95_mtrc_2) ) / kmerlen;
+   double CI95_dist_2 = log( GET_MATRIC(outfield->metric,CI95_mtrc_1) ) / kmerlen;
+   snprintf(linebuf->line + linebuf->len, LINE_LEN - linebuf->len,"\t[%.6lf,%.6lf]\t[%.6lf,%.6lf]", CI95_mtrc_1, CI95_mtrc_2, CI95_dist_1, CI95_dist_2);
+   linebuf->len += 20 + strlen(linebuf->line + linebuf->len + 20);
+  }
+ }
+ snprintf(linebuf->line + linebuf->len, LINE_LEN - linebuf->len,"\n");
+ linebuf->len += 1;
 }
 infile_tab_t* dist_organize_infiles (dist_opt_val_t *opt_val)
 {
+ int fmt_ck;
+ if(opt_val->pipecmd[0]=='\0')
+  fmt_ck = 1;
+ else
+  fmt_ck = 0;
  if( strcmp( opt_val->fpath, "" ) !=0 )
  {
-  return organize_infile_list(opt_val->fpath);
+  return organize_infile_list(opt_val->fpath,fmt_ck);
  }
  else if( opt_val->num_remaining_args > 0 )
  {
-  return organize_infile_frm_arg(opt_val->num_remaining_args, opt_val->remaining_args);
+  return organize_infile_frm_arg(opt_val->num_remaining_args, opt_val->remaining_args,fmt_ck);
  }
  else
  {
@@ -1236,10 +1305,10 @@ infile_tab_t* dist_organize_refpath( dist_opt_val_t *opt_val){
   err(errno,"dist_organize_refpath():%s",opt_val->refpath);
  if( S_ISDIR(path_stat.st_mode) || isOK_fmt_infile(opt_val->refpath, acpt_infile_fmt,ACPT_FMT_SZ) ){
   char * tmp_arg[] = {opt_val->refpath};
-  return organize_infile_frm_arg(1, tmp_arg);
+  return organize_infile_frm_arg(1, tmp_arg,1);
  }
  else if(S_ISREG(path_stat.st_mode))
-  return organize_infile_list(opt_val->refpath);
+  return organize_infile_list(opt_val->refpath,1);
  else
   return NULL;
 }

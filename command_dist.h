@@ -54,16 +54,6 @@ typedef struct mem_usage_stat
   llong others;
 } mem_usage_stat_t;
 typedef long long int llint;
-typedef struct co_dirstat
-{
- unsigned int shuf_id;
- bool koc;
- int kmerlen;
- int dim_rd_len;
-  int comp_num;
-  int infile_num;
- llong all_ctx_ct;
-} co_dstat_t;
 typedef struct mco_dirstat
 {
  unsigned int shuf_id;
@@ -72,13 +62,36 @@ typedef struct mco_dirstat
   int comp_num;
   int infile_num;
 } mco_dstat_t;
+typedef struct output
+{
+ int X_size;
+ int Y_size;
+ int XnY_size;
+ double metric;
+ double dist;
+  double CI95_mtrc_1;
+ double CI95_mtrc_2;
+ double CI95_dist_1;
+ double CI95_dist_2;
+ double pv;
+} output_t;
+typedef struct print_ctrl
+{
+ MTRIC metric;
+ PFIELD pfield;
+ bool correction;
+ double dthreshold ;
+  unsigned int Y_size;
+  llong cmprsn_num;
+  char *qname ;
+ int qry_len;
+} print_ctrl_t;
 extern dim_shuffle_t* dim_shuffle;
 extern unsigned int hashsize;
 extern int component_num;
 int dist_dispatch(struct dist_opt_val* opt_val);
 infile_tab_t* dist_organize_infiles (dist_opt_val_t *opt_val);
 infile_tab_t* dist_organize_refpath (dist_opt_val_t *opt_val);
-const char* test_get_fullpath(const char *parent_path, const char *dstat_f);
 dim_shuffle_t *get_dim_shuffle( dist_opt_val_t *opt_val_in );
 int get_hashsz(dim_shuffle_t *dim_shuffle_in );
 const char * run_stageI (dist_opt_val_t *opt_val,infile_tab_t *seqfile_stat,
@@ -91,7 +104,7 @@ void dist_print( const char *distf, FILE *dist_fp );
 void fname_dist_print(int ref_bin_code, int qry_fcode, const char *distout_dir, unsigned int*ref_ctx_ct_list,
       unsigned int*qry_ctx_ct_list, char (*refname)[PATHLEN], char (*qryfname)[PATHLEN], FILE *dout_fp);
 void dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned int qry_num, unsigned int*ref_ctx_ct_list,
-      unsigned int*qry_ctx_ct_list, int num_cof_batch, char (*refname)[PATHLEN], char (*qryfname)[PATHLEN]);
+      unsigned int*qry_ctx_ct_list, int num_cof_batch, char (*refname)[PATHLEN], char (*qryfname)[PATHLEN],dist_opt_val_t *opt_val);
 void koc_dist_print_nobin ( const char *distout_dir,unsigned int ref_num, unsigned int qry_num, unsigned int*ref_ctx_ct_list,
       unsigned int*qry_ctx_ct_list, int num_cof_batch, char (*refname)[PATHLEN], char (*qryfname)[PATHLEN]);
 const char * combine_queries(dist_opt_val_t *opt_val);

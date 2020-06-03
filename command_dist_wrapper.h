@@ -19,6 +19,8 @@
 #include <argp.h>
 int cmd_dist(struct argp_state* state);
 const char *mk_dist_rslt_dir (const char *parentdirpath, const char * outdirpath );
+typedef enum { Jcd, Ctm } MTRIC;
+typedef enum { Dst, Qv, CI} PFIELD;
 typedef struct dist_opt_val
 {
   int k ;
@@ -36,7 +38,14 @@ typedef struct dist_opt_val
  bool stage2;
  int num_neigb;
  double mut_dist_max;
+ MTRIC metric;
+ PFIELD outfields;
+ bool correction;
  bool abundance;
+ char pipecmd[PATHLEN];
+ char shared_kmerpath[PATHLEN];
+ bool keep_shared_kmer;
+ bool byread;
   int num_remaining_args;
   char **remaining_args;
 } dist_opt_val_t;

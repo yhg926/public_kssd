@@ -140,7 +140,7 @@ FILE * fpathopen (const char *dpath, const char *fname, const char *mode )
     err(errno,"fpathopen()::%s",fullname);
   return fp;
 }
-infile_tab_t * organize_infile_list(char* list_path)
+infile_tab_t * organize_infile_list(char* list_path, int fmt_ck)
 {
   infile_tab_t *infile_stat = malloc(sizeof(infile_tab_t));
   int alloc_usize = 1024;
@@ -151,43 +151,65 @@ infile_tab_t * organize_infile_list(char* list_path)
     if(!list) err(errno,"can't open file %s",list_path);
     char *buf = malloc( LMAX * sizeof(char));
     int file_num = 0;
-    while ( (fgets(buf,LMAX,list))!=NULL){
-   while(isspace(*buf)) buf++;
-      buf[strcspn(buf, "\r\n")] = 0;
-      if( strlen(buf) < 1 )
-        continue;
-      if( strlen(buf) > PATHLEN )
-        err(errno,"the input list: %s\n %dth line:  %s  has %lu characters exceed the maximal allowed length %d",
+  if(fmt_ck){
+     while ( (fgets(buf,LMAX,list))!=NULL){
+    while(isspace(*buf)) buf++;
+       buf[strcspn(buf, "\r\n")] = 0;
+       if( strlen(buf) < 1 )
+         continue;
+       if( strlen(buf) > PATHLEN )
+         err(errno,"the input list: %s\n %dth line:  %s  has %lu characters exceed the maximal allowed length %d",
             list_path,file_num, buf,strlen(buf),PATHLEN);
-      memset(&path_stat, 0, sizeof path_stat);
-      stat(buf, &path_stat) ;
-      if(!S_ISREG(path_stat.st_mode))
+       memset(&path_stat, 0, sizeof path_stat);
+       stat(buf, &path_stat) ;
+       if(!S_ISREG(path_stat.st_mode))
           err(errno,"%dth line: %s",file_num, buf);
-   else if(!isOK_fmt_infile(buf,acpt_infile_fmt,ACPT_FMT_SZ)){
-     printf ("isOK_fmt_infile(): wrong format %dth line: %s\nSupported format are:\n",file_num, buf);
-     for(int i=0; acpt_infile_fmt[i]!=NULL;i++)
-      printf(".%s ",acpt_infile_fmt[i]);
-     printf("\n");
-      err(errno,"program exit");
-   }
-   else {
-    infile_stat->organized_infile_tab[file_num].fsize = path_stat.st_size;
+    else if(!isOK_fmt_infile(buf,acpt_infile_fmt,ACPT_FMT_SZ)){
+      printf ("isOK_fmt_infile(): wrong format %dth line: %s\nSupported format are:\n",file_num, buf);
+      for(int i=0; acpt_infile_fmt[i]!=NULL;i++)
+       printf(".%s ",acpt_infile_fmt[i]);
+      printf("\n");
+       err(errno,"program exit");
+    }
+    else {
+     infile_stat->organized_infile_tab[file_num].fsize = path_stat.st_size;
+     infile_stat->organized_infile_tab[file_num].fpath = malloc(PATHLEN * sizeof(char) );
+     strcpy(infile_stat->organized_infile_tab[file_num].fpath, buf);
+     file_num++;
+     if( file_num >= alloc_usize){
+         alloc_usize+=alloc_usize;
+          infile_stat->organized_infile_tab
+                = realloc(infile_stat->organized_infile_tab, sizeof(infile_entry_t) * alloc_usize );
+         }
+    }
+     };
+  }
+  else{
+   while ( (fgets(buf,LMAX,list))!=NULL){
+        while(isspace(*buf)) buf++;
+        buf[strcspn(buf, "\r\n")] = 0;
+        if( strlen(buf) < 1 )
+          continue;
+        if( strlen(buf) > PATHLEN )
+          err(errno,"the input list: %s\n %dth line:  %s  has %lu characters exceed the maximal allowed length %d",
+            list_path,file_num, buf,strlen(buf),PATHLEN);
+    infile_stat->organized_infile_tab[file_num].fsize = 0;
     infile_stat->organized_infile_tab[file_num].fpath = malloc(PATHLEN * sizeof(char) );
     strcpy(infile_stat->organized_infile_tab[file_num].fpath, buf);
     file_num++;
     if( file_num >= alloc_usize){
-        alloc_usize+=alloc_usize;
-         infile_stat->organized_infile_tab
+            alloc_usize+=alloc_usize;
+            infile_stat->organized_infile_tab
                 = realloc(infile_stat->organized_infile_tab, sizeof(infile_entry_t) * alloc_usize );
-        }
-   }
-    };
+       }
+  }
+ }
     infile_stat->infile_num = file_num ;
     fclose(list);
   free(buf);
     return infile_stat;
 };
-infile_tab_t * organize_infile_frm_arg (int num_remaining_args, char ** remaining_args)
+infile_tab_t * organize_infile_frm_arg (int num_remaining_args, char ** remaining_args,int fmt_ck)
 {
  infile_tab_t *infile_stat = malloc(sizeof(infile_tab_t));
  int file_num = 0;
@@ -197,6 +219,7 @@ infile_tab_t * organize_infile_frm_arg (int num_remaining_args, char ** remainin
  char fullpath[PATHLEN];
  int alloc_usize = 1024;
  infile_stat->organized_infile_tab = malloc( sizeof(infile_entry_t) * alloc_usize );
+if(fmt_ck) {
  for(int i=0;i<num_remaining_args;i++){
   stat(remaining_args[i],&path_stat);
   if( S_ISDIR(path_stat.st_mode)){
@@ -241,6 +264,20 @@ infile_tab_t * organize_infile_frm_arg (int num_remaining_args, char ** remainin
       err(errno,"program exit");
   }
  };
+}
+else{
+ for(int i=0;i<num_remaining_args;i++){
+  infile_stat->organized_infile_tab[file_num].fsize = 0;
+  infile_stat->organized_infile_tab[file_num].fpath = malloc(PATHLEN * sizeof(char));
+  strcpy(infile_stat->organized_infile_tab[file_num].fpath, remaining_args[i]);
+  file_num++;
+  if( file_num >= alloc_usize){
+        alloc_usize+=alloc_usize;
+        infile_stat->organized_infile_tab
+          = realloc( infile_stat->organized_infile_tab, sizeof(infile_entry_t) * alloc_usize );
+    }
+ }
+}
  infile_stat->infile_num = file_num ;
  return infile_stat;
 };
@@ -259,8 +296,8 @@ infile_fmt_count_t *infile_fmt_count ( infile_tab_t * infile_tab )
    fmt_count->co++;
   else if(isOK_fmt_infile (infile_tab->organized_infile_tab[i].fpath, mco_fmt,MCO_FMT_SZ))
    fmt_count->mco++;
-  else
-   err(errno,"%s is not accept format(.fasta,.fastq,.co)",infile_tab->organized_infile_tab[i].fpath);
+  else if(infile_tab->organized_infile_tab[i].fsize != 0)
+   err(errno,"infile_fmt_count(): %s is not accept format(.fasta,.fastq,.co)",infile_tab->organized_infile_tab[i].fpath);
  }
  return fmt_count;
 }

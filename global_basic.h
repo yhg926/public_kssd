@@ -14,6 +14,7 @@
    
 #ifndef GLOBAL_BASIC
 #define GLOBAL_BASIC 
+#include <stdbool.h>
 #define _64MASK 0xffffffffffffffffLLU
 #define BIT1MASK 0x0000000000000001LLU
 #if ALPHABET == 1
@@ -21,7 +22,6 @@
  #define OBJ_ALPH 16
  #define OBJ_BITS 4
  #define BIN_SZ 4096
- #include <stdbool.h>
   extern const bool Objdist[16][16];
   #define IS_DIFF(X,Y) ( Objdist[(X)][(Y)] )
 #elif ALPHABET == 2
@@ -43,7 +43,7 @@
 #define COMPONENT_SZ 7
 #endif
 #ifndef CTX_SPC_USE_L
-#define CTX_SPC_USE_L 4
+#define CTX_SPC_USE_L 8
 #endif
 #define CTX_DR_LMT 100
 #define LD_FCTR 0.6
@@ -87,9 +87,19 @@ typedef struct bin_stat {
  char (*seqfilebasename)[BASENAME_LEN];
  llong AllcoMem;
 } bin_stat_t;
-infile_tab_t * organize_infile_list(char* list_path);
-infile_tab_t * organize_infile_frm_arg (int num_remaining_args, char ** remaining_args);
+infile_tab_t * organize_infile_list(char* list_path,int fmt_ck);
+infile_tab_t * organize_infile_frm_arg (int num_remaining_args, char ** remaining_args,int fmt_ck);
 bin_stat_t * get_bin_basename_stat(infile_entry_t* organized_infile_tab, int *shuffle_arr,int binsz);
+typedef struct co_dirstat
+{
+  unsigned int shuf_id;
+  bool koc;
+  int kmerlen;
+  int dim_rd_len;
+  int comp_num;
+  int infile_num;
+  llong all_ctx_ct;
+} co_dstat_t;
 #define ACPT_FMT_SZ 7
 #define FAS_FMT_SZ 4
 #define FQ_FMT_SZ 2
@@ -177,6 +187,7 @@ static inline mmp_uint_t mmp_uint_arr (char *cofname)
 };
 int str_suffix_match(char *str, const char *suf);
 const char * get_pathname(const char *fullpath, const char *suf);
+const char* test_get_fullpath(const char *parent_path, const char *dstat_f);
 typedef struct
 {
   int fasta;
