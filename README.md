@@ -9,6 +9,11 @@ Kssd is a command-line tool for large-scale sequences sketching and resemblance-
     2. [Sketching sequences](#32-sketching-sequences)
         1.  [Sketching references](#321-sketching-references)  
         2.  [Sketching queries](#322-sketching-queries)
+				3.	[Sketching from data streaming](#323-Sketching-from-data-streaming)
+				4.	[Set operations](#324-Set-operations)
+					1.	[Sketches union](#3241-Sketches-union)
+					2.	[Sketches intersection](#3242-Sketches-intersection)
+					3.	[Sketches subtraction](#3243-Sketches-subtraction)	 
     3.  [Distance estimation](#33-distance-estimation)
         1.  [Reference against references distance](#331-reference-against-references-distance) 
         2.  [Search the queries against the references](#332-search-the-queries-against-the-references)
@@ -96,6 +101,32 @@ To compare queries with references, queries need be skeched using the same `.shu
 kssd dist -o <qry_outdir> -L <ref_outdir/default.shuf or the_.shuf_file_used_by_references> <queries_.fasta/fastq_dir>
 ```
 `-o`: There is only one folder `qry/` in the output dir `qry_outdir`. In Step 3 distance estimation `qry_outdir/qry` feed as queries.
+
+### 3.2.3 Sketching from data streaming
+Suppose you want sketching Sequence Read Archive Accesssion ERR000001, just run:
+```
+kssd dist -L <your .shuf file> -n 2 -o <outdir> --pipecmd "fastq-dump --skip-technical --split-spot -Z" ERR000001
+``` 
+or prefetch first
+```
+prefetch ERR000001 && kssd dist -L <your .shuf file> -n 2 -o <outdir> --pipecmd "fastq-dump --skip-technical --split-spot -Z" <.sra dir>/ERR000001.sra
+```
+### 3.2.4 Set operations
+#### 3.2.4.1 Sketches union 
+```
+kssd set -u <qry_outdir/qry> -o <union_outdir>  
+```
+It will create the union sketch in <union_outdir> from the combined queries sketch in <qry_outdir/qry>. Note the combined queries sketch is just a sketch combined from all queries sketches, the union operation deduplicate those integers duplicated in different queries;
+#### 3.2.4.2 Sketches intersection
+```
+kssd set -i <union_outdir> -o <intersect_outdir> <qry_outdir/qry>
+```
+It will create the intersection sketch in <intersect_outdir> between the union sketch in <union_outdir> and the combined queries sketch in <qry_outdir/qry>;
+#### 3.2.4.3 Sketches subtraction
+```
+kssd set -s <union_outdir> -o <subtract_outdir> <qry_outdir/qry>
+```
+It subtracts the union sketch in <union_outdir> from the combined queries sketch in <qry_outdir/qry> and creates the remainder sketch in <subtract_outdir>
 
 ## 3.3 Distance estimation
 ### 3.3.1 Reference against references distance
