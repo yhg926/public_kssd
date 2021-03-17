@@ -1,16 +1,6 @@
-# Important Notification
-Our lastest kssd manuscript is submitted for review.
-The Supplementary Files used to reproduce the Results could be found here:  
-
-Supplementary Files
-1.	File L1 (https://drive.google.com/file/d/1VQOKGCXoSCmSesS-4Bn6SFJPO1YUY_b3/view?usp=sharing, 10G)
-The sketch of metagenomics datasets.
-2.	Figure S1 and Supplementary Methods (https://drive.google.com/file/d/19zkKFalXXXdcMF8gFF-4DjxXrz1mOXDZ/view?usp=sharing, 10G)
- All sketches, the testing datasets, scripts, the shuffled k-mer substring space file (.shuf file), the source data and the detailed workflow (README.md) to reproduce the “Results”.
-
 # Kssd: K-mer substring space sampling/shuffling Decomposition
 
-Kssd is a command-line tool for large-scale sequences sketching and resemblance- and containment-analysis. It sketches sequences by k-mer substring space sampling/shuffling, please see Methods part of our preprint (https://www.biorxiv.org/content/10.1101/729665v1) for how it works. It handles DNA sequences of both fasta or fastq format, whether gzipped or not. Kssd run on linux system, currently not support for MacOS and Windows OS.
+Kssd is a command-line tool for large-scale sequences sketching and resemblance- and containment-analysis. It sketches sequences by k-mer substring space sampling/shuffling, please see Methods part of our Genome Biology paper (https://genomebiology.biomedcentral.com/articles/10.1186/s13059-021-02303-4) for how it works. It handles DNA sequences of both fasta or fastq format, whether gzipped or not. Kssd run on linux system, currently not support for MacOS and Windows OS.
 ### Table of contents
 1.  [Installation](#1-installation)
 2.  [Quick Tutorial](#2-quick-tutorial)
@@ -163,6 +153,7 @@ Make sure all queries batches use the same .shuf file
 
 # 4. How to cite
 
-Yi, H., Y. Lin, and W. Jin, Sequences Dimensionality-Reduction by K-mer Substring Space Sampling Enables Effective Resemblance- and Containment-Analysis for Large-Scale omics-data. bioRxiv, 2019: p. 729665. (https://www.biorxiv.org/content/10.1101/729665v1)
+Yi, H., Lin, Y., Lin, C. et al. Kssd: sequence dimensionality reduction by k-mer substring space sampling enables real-time large-scale datasets analysis. Genome Biol 22, 84 (2021). https://doi.org/10.1186/s13059-021-02303-4
+
 
 
