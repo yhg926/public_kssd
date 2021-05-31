@@ -65,7 +65,7 @@ kssd shuffle -k <half_length_of_k-mer> -s <half_length_of_k-mer_substring> -l <d
 ```
 This step can be omitted, and you can skip to step 2 if you wish to use default setting of `-s`. Other wise read below:  
 This command will generate a file suffixed by ‘.shuf’ which keeps the shuffled k-mer substring space, this file would then took as input for sequences sketching or decomposition.  
-`-k`: Half-length of k-mer, `-k x` meaning use k-mer of length `2x`. For bacterial `-k 8` is recommand; for mammals, `-k 10` is recommand; for other genome size in-between, `-k 9` is recommand.  
+`-k`: Half-length of k-mer, `-k x` meaning use k-mer of length `2x`. For bacterial `-k 8` is recommand; for mammals or metagenomics, `-k 10` is recommand; for other genome size in-between, `-k 9` is recommand.  
 `-s`: Half-length of k-mer substring, `-s x` meaning the whole space is the collection of all `2x-mer`. Make sure `l < s < k`. The default setting is `-s 6`, usually there is no need to change this setting.   
 `-l`: The level of dimensionality-reduction. `-l x` meaning the expected rate of dimensionality-reduction is `$16^x$`; for bacterial `-l 3` is recommand; for mammals, `-l 4` or `-l 5` is recommand. `l < s`.  
 `-o` output .shuf file.
