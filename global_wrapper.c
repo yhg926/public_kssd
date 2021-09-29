@@ -26,6 +26,10 @@
 #include <time.h>
 #include <argp.h>
 #include <argz.h>
+
+char *domain;
+char *long_domain;
+
 static struct argp_option opt_global[] = {
  {"usage",'u',0,OPTION_NO_USAGE,0},
  {"help",'?',0,OPTION_NO_USAGE,0},
