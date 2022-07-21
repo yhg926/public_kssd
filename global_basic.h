@@ -73,6 +73,7 @@ extern const int Basemap[128];
 extern const char Mapbase[];
 extern const unsigned int primer[25];
 llong find_lgst_primer_2pow(int w);
+int nextPrime(int);
 typedef struct infile_entry {
  size_t fsize;
  char* fpath;
@@ -196,4 +197,13 @@ typedef struct
  int mco;
 } infile_fmt_count_t ;
 infile_fmt_count_t *infile_fmt_count ( infile_tab_t * infile_tab );
+extern const char co_dstat[];
+extern const char skch_prefix[];
+extern const char idx_prefix[];
+extern const char pan_prefix[];
+extern const char uniq_pan_prefix[];
+typedef unsigned int ctx_obj_ct_t;
+#define H1(K,HASH_SZ) ((K)%(HASH_SZ))
+#define H2(K,HASH_SZ) ( 1 + (K) % ( (HASH_SZ) - 1 ) )
+#define HASH(K,I,HASH_SZ) ( ( H1(K,HASH_SZ) + I * H2(K,HASH_SZ) ) % HASH_SZ )
 #endif

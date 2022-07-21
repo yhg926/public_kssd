@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "global_basic.h"
-const char *argp_program_version = "kssd version 1.1";
+const char *argp_program_version = "kssd version 2.1";
 const char *argp_program_bug_address = "yhg926@gmail.com";
 int main(int argc, char** argv)
 {

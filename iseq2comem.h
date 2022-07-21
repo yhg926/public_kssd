@@ -16,8 +16,8 @@
 #define SEQ2CO_H 
 #include "global_basic.h"
 #define READSEQ_BUFFSZ 65536
-#define OCCRC_BIT 24
-#define OCCRC_MAX 0xffffffLLU
+#define OCCRC_BIT 16
+#define OCCRC_MAX 0xffffLLU
 extern void seq2co_global_var_initial(void);
 llong * mmpfasta2co(char* seqfname, llong *co);
 llong * fasta2co(char* seqfname,llong *co,char * pipecmd);
@@ -27,5 +27,6 @@ llong write_fqco2file(char* cofilename, llong *co);
 llong wrt_co2cmpn_use_inn_subctx(char* cofilename, llong *co);
 llong writeco2file(char* cofilename, llong *co);
 llong write_fqkoc2file(char* cofilename, llong *co);
+unsigned int write_fqkoc2files(char* cofilename, llong *co);
 int reads2mco(char* seqfname,const char *co_dir, char * pipecmd);
 #endif

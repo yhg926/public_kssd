@@ -32,9 +32,6 @@
 #include <unistd.h>
 #define HIBITSET1 0x8000000000000000LLU
 #define _64MASK 0xffffffffffffffffLLU
-#define H1(K,HASH_SZ) ((K)%(HASH_SZ))
-#define H2(K,HASH_SZ) ( 1 + (K) % ( (HASH_SZ) - 1 ) )
-#define HASH(K,I,HASH_SZ) ( ( H1(K,HASH_SZ) + I * H2(K,HASH_SZ) ) % HASH_SZ )
 static int rand_id;
 static int half_ctx_len;
 static int half_subctx_len;
@@ -273,7 +270,7 @@ llong * fasta2co(char* seqfname, llong *co, char * pipecmd)
   pclose(infp);
   return co;
 };
-#define LEN 4096
+#define LEN 20000
 #define CT_BIT 4
 #define CT_MAX 0xfLLU
 llong * fastq2co(char* seqfname, llong *co, char *pipecmd, int Q, int M )
@@ -288,16 +285,18 @@ llong * fastq2co(char* seqfname, llong *co, char *pipecmd, int Q, int M )
   else
     sprintf(fq_fname,"%s %s",gzpipe_cmd,seqfname);
  if( (infp=popen(fq_fname,"r")) == NULL ) err(errno,"fastq2co():%s",fq_fname);
- char seq[LEN];
- char qual[LEN];
+ char *seq = malloc(LEN+10);
+ char *qual = malloc(LEN+10);
  fgets(seq,LEN,infp); fgets(seq,LEN,infp);
  fgets(qual,LEN,infp); fgets(qual,LEN,infp);
  llong base = 1; char ch ; int basenum,line_num = 0 ;
  unsigned int keycount =0 ;
- for(int pos = 0; pos < strlen(seq); pos++){
+ int sl = strlen(seq);
+ for(int pos = 0; pos < sl; pos++){
   if(seq[pos] == '\n' ){
    fgets(seq,LEN,infp); fgets(seq,LEN,infp);
    fgets(qual,LEN,infp); fgets(qual,LEN,infp);
+   sl = strlen(seq);
    line_num+=4;
    if( !feof(infp) ) {
     base = 1;
@@ -348,9 +347,14 @@ llong * fastq2co(char* seqfname, llong *co, char *pipecmd, int Q, int M )
    };
   };
  }
+ printf("%d reads detected\n",line_num);
  pclose(infp);
+ free(seq);
+  free(qual);
  return co;
 };
+#define OCCRC_BIT 16
+#define OCCRC_MAX 0xffffLLU
 llong * fastq2koc (char* seqfname, llong *co, char *pipecmd, int Q)
 {
   llong tuple = 0LLU, crvstuple = 0LLU, unituple, drtuple, pfilter;
@@ -361,17 +365,19 @@ llong * fastq2koc (char* seqfname, llong *co, char *pipecmd, int Q)
     sprintf(fq_fname,"%s %s",pipecmd,seqfname);
   else
     sprintf(fq_fname,"%s %s",gzpipe_cmd,seqfname);
-  if( (infp=popen(fq_fname,"r")) == NULL ) err(errno,"fastq2co():%s",fq_fname);
-  char seq[LEN];
-  char qual[LEN];
+  if( (infp=popen(fq_fname,"r")) == NULL ) err(errno,"fastq2koc():%s",fq_fname);
+ char *seq = malloc(LEN+10);
+  char *qual = malloc(LEN+10);
   fgets(seq,LEN,infp); fgets(seq,LEN,infp);
   fgets(qual,LEN,infp); fgets(qual,LEN,infp);
   llong base = 1; char ch ; int basenum,line_num = 0 ;
   unsigned int keycount =0 ;
-  for(int pos = 0; pos < strlen(seq); pos++){
+ int sl = strlen(seq);
+  for(int pos = 0; pos < sl; pos++){
     if(seq[pos] == '\n' ){
       fgets(seq,LEN,infp); fgets(seq,LEN,infp);
       fgets(qual,LEN,infp); fgets(qual,LEN,infp);
+   sl = strlen(seq);
       line_num+=4;
       if( !feof(infp) ) {
         base = 1;
@@ -415,15 +421,52 @@ llong * fastq2koc (char* seqfname, llong *co, char *pipecmd, int Q)
         } else if ( ( co[n] >> OCCRC_BIT ) == drtuple ) {
             if( (co[n] & OCCRC_MAX) < OCCRC_MAX )
               co[n]+=1LLU;
-            else
-              co[n]|= OCCRC_MAX ;
           break ;
         };
       };
     };
   }
   pclose(infp);
+ free(seq);
+ free(qual);
   return co;
+};
+unsigned int write_fqkoc2files(char* cofilename, llong *co)
+{
+  int comp_code_bits = half_ctx_len - drlevel > COMPONENT_SZ ? 4*(half_ctx_len - drlevel - COMPONENT_SZ ) : 0 ;
+  FILE **outf,**abdf;
+  outf = malloc(component_num * sizeof(FILE *));
+ abdf = malloc(component_num * sizeof(FILE *));
+  char cofilename_with_component[PATHLEN];
+  for(int i=0;i<component_num ;i++)
+  {
+    sprintf(cofilename_with_component,"%s.%d",cofilename,i);
+    if ( (outf[i] = fopen(cofilename_with_component,"wb") ) == NULL )
+      err(errno,"write_fqkoc2files()") ;
+  sprintf(cofilename_with_component,"%s.%d.a",cofilename,i);
+  if ( (abdf[i] = fopen(cofilename_with_component,"wb") ) == NULL )
+      err(errno,"write_fqkoc2files()") ;
+  };
+  unsigned int count, wr = 0, newid,compi;
+ unsigned short abdc;
+  for(count=0;count < hashsize; count++)
+  {
+    if( co[count] > 0 ) {
+   compi = (co[count] >> OCCRC_BIT ) % component_num;
+      newid = (unsigned int)(co[count] >> (comp_code_bits + OCCRC_BIT));
+      fwrite( &newid, sizeof(newid),1,outf[compi] );
+   abdc = co[count] & OCCRC_MAX;
+   fwrite( &abdc, sizeof(abdc),1,abdf[compi] );
+      wr++;
+    }
+  }
+  for(int i=0;i<component_num ;i++){
+    fclose(outf[i]);
+  fclose(abdf[i]);
+ }
+  free(outf);
+ free(abdf);
+  return wr;
 };
 llong write_fqkoc2file(char* cofilename, llong *co)
 {
