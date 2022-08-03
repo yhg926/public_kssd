@@ -30,13 +30,13 @@ make
 ```
 cd test_fna;
 #sketch references
- ../kssd dist -L 3 -r ./seqs1 -o reference
-#sketch queries using same kmer substring shuffled space with the references (.shuf file)
-../kssd dist -L reference/default.shuf -o query ./seqs2
+../kssd dist -L ../shuf_file/L3K10.shuf -r ./seqs1 -o reference
+#sketch queries 
+../kssd dist -L ../shuf_file/L3K10.shuf -o query ./seqs2
 #Search queries against references db 
-../kssd dist -r reference/ref -o distout query/qry
+../kssd dist -r ref -o distout query
 # or you can compute the pairwise distance of references
-../kssd dist -r reference/ref -o reference reference/qry
+../kssd dist -r ref -o distout reference
 ```
 Here is the explanation of the output file "distance.out" (please see [How to cite](#4-how-to-cite) for the referred equations)
 
