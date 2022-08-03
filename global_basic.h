@@ -186,6 +186,25 @@ static inline mmp_uint_t mmp_uint_arr (char *cofname)
  close(fd);
  return cofilemmp;
 };
+typedef struct mmpany
+{
+  size_t fsize;
+  void *mmp;
+} mmp_any_t;
+static inline mmp_any_t mmp_any (char *fname)
+{
+  mmp_any_t filemmp;
+  int fd;
+  struct stat s;
+  fd = open (fname, O_RDONLY);
+  check (fd < 0, "open %s failed: %s", fname, strerror (errno));
+  fstat (fd, & s);
+  filemmp.fsize = s.st_size;
+  filemmp.mmp = mmap(NULL, s.st_size , PROT_READ, MAP_PRIVATE, fd, 0);
+  check ( filemmp.mmp == MAP_FAILED, "mmap %s failed: %s", fname, strerror (errno));
+  close(fd);
+  return filemmp;
+};
 int str_suffix_match(char *str, const char *suf);
 const char * get_pathname(const char *fullpath, const char *suf);
 const char* test_get_fullpath(const char *parent_path, const char *dstat_f);
@@ -202,6 +221,9 @@ extern const char skch_prefix[];
 extern const char idx_prefix[];
 extern const char pan_prefix[];
 extern const char uniq_pan_prefix[];
+extern const char mco_dstat[];
+extern const char mco_gids_prefix[];
+extern const char mco_idx_prefix[];
 typedef unsigned int ctx_obj_ct_t;
 #define H1(K,HASH_SZ) ((K)%(HASH_SZ))
 #define H2(K,HASH_SZ) ( 1 + (K) % ( (HASH_SZ) - 1 ) )

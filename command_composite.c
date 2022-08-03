@@ -196,7 +196,6 @@ int get_species_abundance (composite_opt_t * composite_opt) {
      }
     }
    }
-  printf("OK\n");
 #pragma omp parallel for num_threads(composite_opt->p) schedule(guided)
    for(int rn = 0; rn < ref_dstat.infile_num; rn++) {
     for( size_t ri = ref_index_combco[rn]; ri < ref_index_combco[rn+1]; ri++){
