@@ -23,6 +23,7 @@ llong * mmpfasta2co(char* seqfname, llong *co);
 llong * fasta2co(char* seqfname,llong *co,char * pipecmd);
 llong * fastq2co(char* seqfname, llong *co, char * pipecmd,int Q, int M );
 llong * fastq2koc (char* seqfname, llong *co, char * pipecmd, int Q);
+llong * mt_shortreads2koc (char* seqfname, llong *co, char *pipecmd,int p);
 llong write_fqco2file(char* cofilename, llong *co);
 llong wrt_co2cmpn_use_inn_subctx(char* cofilename, llong *co);
 llong writeco2file(char* cofilename, llong *co);

@@ -548,3 +548,67 @@ llong wrt_co2cmpn_use_inn_subctx(char* cofilename, llong *co)
  free(outf);
   return wr;
 };
+#define THREAD_MAX 65536
+#define FQ_LEN 4096
+llong * mt_shortreads2koc (char* seqfname, llong *co, char *pipecmd,int p){
+printf("runing mt_shortreads2koc()\n");
+char (*fq_buff)[FQ_LEN] = malloc( THREAD_MAX * FQ_LEN );
+char tmp[FQ_LEN];
+int l;
+unsigned int keycount =0 ;
+  memset(co,0LLU,hashsize*sizeof(llong));
+ FILE *infp;
+  char fq_fname[PATHLEN];
+  if(pipecmd[0] != '\0') sprintf(fq_fname,"%s %s",pipecmd,seqfname);
+ else sprintf(fq_fname,"%s %s",gzpipe_cmd,seqfname);
+  if( (infp=popen(fq_fname,"r")) == NULL ) err(errno,"mtfastq2koc():%s",fq_fname);
+ while (!feof(infp)){
+  for (l = 0; l < THREAD_MAX && fgets(tmp,FQ_LEN,infp) && fgets(fq_buff[l],FQ_LEN,infp) && fgets(tmp,FQ_LEN,infp) && fgets(tmp,FQ_LEN,infp); l++) ;
+#pragma omp parallel for num_threads(p) schedule(guided)
+  for (int t = 0 ; t < l ; t++ ){
+   int base = 1; char ch;
+      llong tuple = 0LLU;
+      llong crvstuple = 0LLU;
+      llong unituple = 0LLU;
+   for(int pos = 0; (ch = fq_buff[t][pos]) != '\n'; pos++){
+    int basenum = Basemap[(int)ch];
+    if(basenum != DEFAULT ){
+     tuple = ( ( tuple<< 2 ) | (llong)basenum ) & tupmask ;
+     crvstuple = ( crvstuple >> 2 ) + (((llong)basenum^3LLU) << crvsaddmove);
+     base++;
+    }else{ base = 1;continue;}
+    if( base > TL ){
+         unituple = tuple < crvstuple ? tuple:crvstuple;
+        unsigned int dim_tup = ((unituple & domask) >> ( (half_outctx_len)*2 ) ) ;
+     llong pfilter = dim_shuf_arr[dim_tup];
+     if( ( pfilter >= dim_end) || (pfilter < dim_start ) ) continue;
+     pfilter = pfilter - dim_start;
+     llong drtuple = ( ( (unituple & undomask)
+      + ( ( unituple & ( ( 1LLU<< ( half_outctx_len*2) ) - 1)) << (TL*2 - half_outctx_len*4) ) )
+      >> ( drlevel*4 ) )
+      + pfilter ;
+     for(unsigned int i=0;i<hashsize;i++){
+      unsigned int n = HASH(drtuple, i, hashsize);
+      if (co[n] == 0LLU){
+#pragma omp atomic write
+      co[n] = (drtuple << OCCRC_BIT) + 1LLU ;
+#pragma omp atomic
+       keycount++;
+       if( keycount > hashlimit )
+         err(errno,"the context space is too crowd, try rerun the program using -k%d", half_ctx_len + 1);
+       break;
+      }else if ( ( co[n] >> OCCRC_BIT ) == drtuple ) {
+       if( (co[n] & OCCRC_MAX) < OCCRC_MAX )
+#pragma omp atomic
+         co[n]+=1LLU;
+        break ;
+      }
+     }
+    }
+   }
+  }
+ }
+ pclose(infp);
+ free(fq_buff);
+ return co;
+}

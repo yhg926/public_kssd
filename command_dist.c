@@ -272,7 +272,8 @@ const char * run_stageI (dist_opt_val_t *opt_val, infile_tab_t *seqfile_stat,
   }
  }
  else {
-#pragma omp parallel for num_threads(p_fit_mem) reduction(+:all_ctx_ct) schedule(guided)
+  int num_threads = seqfile_stat->infile_num > p_fit_mem ? p_fit_mem : 1;
+#pragma omp parallel for num_threads(num_threads) reduction(+:all_ctx_ct) schedule(guided)
    for(int i = 0; i< seqfile_stat->infile_num; i++){
      int tid = 0;
 #ifdef _OPENMP
@@ -284,7 +285,7 @@ const char * run_stageI (dist_opt_val_t *opt_val, infile_tab_t *seqfile_stat,
       llong *co;
       if(isOK_fmt_infile(seqfname,fastq_fmt,FQ_FMT_SZ) || opt_val->pipecmd[0]!='\0'){
     if(opt_val->abundance){
-      co = fastq2koc(seqfname,CO[tid],opt_val->pipecmd, opt_val->kmerqlty);
+     co = mt_shortreads2koc(seqfname,CO[tid],opt_val->pipecmd, p_fit_mem);
       ctx_ct_list[i] = write_fqkoc2files(cofname,co);
     }
     else{
