@@ -6,6 +6,10 @@ if(@ARGV != 3){
 #Ranks:superkingdom|phylum|class|order|family|genus|species
 $median_thr = 1;
 $avgpct9899_thr = 3;
+$shkm_thr = 7;
+#LOW THRESHOULD
+$low_avgpct9899_thr = 2;
+$small_val = 0.001;
 
 open $nodef, $ARGV[2] || die "cant open $ARGV[2]: $!";
 while(<$nodef>){
@@ -32,14 +36,21 @@ open $kssdf, $ARGV[0] || die "cant open $ARGV[0]: $!";
 
 while(<$kssdf>){
 	chomp;
-	($sample,$ref,$avgpct9899,$median)= (split /\t+/)[0,1,4,5];
+	($sample,$ref, $shkm, $avgpct9899,$median)= (split /\t+/)[0,1,2,4,5];
 	$sample=~s/[^0-9a-zA-Z_.]/_/g;
 	$psid=(split /_/, $ref)[0];
-	if($avgpct9899 > $avgpct9899_thr and $median > $median_thr){
-		$data{$sample}->{$psid} = $avgpct9899;
-		$sum{$sample} += $avgpct9899;
+	if($avgpct9899 > $avgpct9899_thr and $median > $median_thr and $shkm > $shkm_thr){
+		$data{$sample}->{$psid} = $avgpct9899 - $avgpct9899_thr;
+		$sum{$sample} += ($avgpct9899 - $avgpct9899_thr);
+	}
+#assign small value to low abundance species to increase completeness
+	elsif($avgpct9899 >= $low_avgpct9899_thr and $shkm > $shkm_thr ){
+		$depth = $avgpct9899 - $avgpct9899_thr > $small_val ? $avgpct9899 - $avgpct9899_thr : $small_val;
+		$data{$sample}->{$psid} = $depth;		
+		$sum{$sample} += $depth; 
 	}
 }
+
 close $kssdf;
 
 @ranks = ("superkingdom","phylum","class","order","family","genus","species");
@@ -69,7 +80,8 @@ print "# Taxonomic Profiling Output\n";
 print "\@SampleID:",$sample,"\n";
 print "\@Version:0.9.1\n";
 print "\@Ranks:superkingdom|phylum|class|order|family|genus|species\n";
-print "\@TaxonomyID:ncbi-taxonomy_DATE\n";
+print "\@TaxonomyID:ncbi-taxonomy_2021.07.19\n";
+print "\@__program__:kssd2\n";
 print "\@\@TAXID\tRANK\tTAXPATH\tTAXPATHSN\tPERCENTAGE\n";		
 	foreach $ele (@ranks){
 		  @sorted_taxid = sort{$nctax_ab{$b} <=> $nctax_ab{$a} } @{$rank_cate{$ele}} ;
