@@ -551,7 +551,7 @@ llong wrt_co2cmpn_use_inn_subctx(char* cofilename, llong *co)
 #define THREAD_MAX 65536
 #define FQ_LEN 4096
 llong * mt_shortreads2koc (char* seqfname, llong *co, char *pipecmd,int p){
-printf("runing mt_shortreads2koc()\n");
+printf("running mt_shortreads2koc()\n");
 char (*fq_buff)[FQ_LEN] = malloc( THREAD_MAX * FQ_LEN );
 char tmp[FQ_LEN];
 int l;
