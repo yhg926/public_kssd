@@ -36,6 +36,9 @@ print META "sample-id","\n";
 
 print OTU "#OTU";
 for ($i=1;$i<@ARGV; $i++){
+	$tempname= $ARGV[$i] ;
+	$tempname =~ s/.*\///g;
+	$tempname =~ s/\..*//g;
 	print OTU "\t", $ARGV[$i];
 	print META $ARGV[$i],"\n";
 }
