@@ -66,7 +66,7 @@ $dirname = "./temp_Krona_fmt";
 mkdir $dirname, 0755;
 open $outf, "> $dirname/$sample";
 
-foreach $psid ( sort{ $depth{$b} <=> $depth{$a} } keys %depth ){	
+foreach $psid ( sort{ $depth{$b} <=> $depth{$a} or $a <=> $b  } keys %depth ){	
 	printf $outf "%.4f\t%s\n",  $depth{$psid}/$sum , $hash{$psid};  
 }
 
