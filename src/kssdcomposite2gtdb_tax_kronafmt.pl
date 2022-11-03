@@ -1,7 +1,7 @@
 use warnings;
 use diagnostics;
-if(@ARGV != 2){
-	die "*.pl <kssdcomposite_output.tsv> <gtdbr207_psid2krona_taxonomy.tsv>";
+if(@ARGV != 3){
+	die "*.pl <kssdcomposite_output.tsv> <gtdbr207_psid2krona_taxonomy.tsv> <outdir>";
 }
 #Ranks:superkingdom|phylum|class|order|family|genus|species
 $median_thr = 1;
@@ -62,9 +62,9 @@ while(<$kssdf>){
 
 close $kssdf;
 
-$dirname = "./temp_Krona_fmt";
-mkdir $dirname, 0755;
-open $outf, "> $dirname/$sample";
+#$dirname = "./temp_Krona_fmt";
+mkdir $ARGV[2], 0755;
+open $outf, "> $ARGV[2]/$sample";
 
 foreach $psid ( sort{ $depth{$b} <=> $depth{$a} or $a <=> $b  } keys %depth ){	
 	printf $outf "%.4f\t%s\n",  $depth{$psid}/$sum , $hash{$psid};  
