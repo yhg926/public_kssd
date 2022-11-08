@@ -67,7 +67,7 @@ mkdir $ARGV[2], 0755;
 open $outf, "> $ARGV[2]/$sample";
 
 foreach $psid ( sort{ $depth{$b} <=> $depth{$a} or $a <=> $b  } keys %depth ){	
-	printf $outf "%.4f\t%s\n",  $depth{$psid}/$sum , $hash{$psid};  
+	printf $outf "%.4f\t%s\n",  $depth{$psid}*100/$sum , $hash{$psid};  
 }
 
 close $outf;
