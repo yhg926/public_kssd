@@ -43,7 +43,7 @@
 #define COMPONENT_SZ 7
 #endif
 #ifndef CTX_SPC_USE_L
-#define CTX_SPC_USE_L 8
+#define CTX_SPC_USE_L 4
 #endif
 #define CTX_DR_LMT 100
 #define LD_FCTR 0.6
