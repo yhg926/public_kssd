@@ -40,10 +40,10 @@
 #define PATHLEN 256
 #define MCO_BUF_S 4096
 #ifndef COMPONENT_SZ
-#define COMPONENT_SZ 7
+#define COMPONENT_SZ 8
 #endif
 #ifndef CTX_SPC_USE_L
-#define CTX_SPC_USE_L 4
+#define CTX_SPC_USE_L 8
 #endif
 #define CTX_DR_LMT 100
 #define LD_FCTR 0.6
@@ -228,4 +228,5 @@ typedef unsigned int ctx_obj_ct_t;
 #define H1(K,HASH_SZ) ((K)%(HASH_SZ))
 #define H2(K,HASH_SZ) ( 1 + (K) % ( (HASH_SZ) - 1 ) )
 #define HASH(K,I,HASH_SZ) ( ( H1(K,HASH_SZ) + I * H2(K,HASH_SZ) ) % HASH_SZ )
+#define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
 #endif

@@ -92,6 +92,7 @@ int uniq_sketch_union();
 int combin_pans();
 void print_gnames();
 compan_t *organize_taxf(char* taxfile);
+int grouping_genomes(char* taxfile) ;
 static error_t parse_set(int key, char* arg, struct argp_state* state) {
   struct arg_set* set = state->input;
   assert( set );
@@ -210,7 +211,7 @@ int cmd_set(struct argp_state* state)
    return sketch_operate() ;
   else {
    if(set_opt.P) print_gnames();
-   else if (set_opt.subsetf[0]!='\0') return combin_subset_pans(set_opt.subsetf);
+   else if (set_opt.subsetf[0]!='\0') return grouping_genomes(set_opt.subsetf);
    else printf("set operation use : -u, -q, -i or -s\n");
    return -1 ;
   }
@@ -256,7 +257,7 @@ int sketch_union()
  fwrite( &co_dstat_readin,sizeof(co_dstat_t),1, co_stat_fp2 );
   fclose(co_stat_fp);
   fclose(co_stat_fp2);
- unsigned int comp_sz = (1 << 4*COMPONENT_SZ);
+ size_t comp_sz = (1LLU << 4*COMPONENT_SZ);
  llong* dict = (llong*)malloc(comp_sz/8);
  unsigned int tmpcbdco;
  for(int i=0; i < co_dstat_readin.comp_num; i++){
@@ -317,7 +318,7 @@ int sketch_operate()
  size_t *fco_pos = malloc(sizeof(size_t) * (co_dstat_origin.infile_num + 1) );
  size_t *post_fco_pos = malloc(sizeof(size_t) * (co_dstat_origin.infile_num + 1) );
  post_fco_pos[0] = 0;
- unsigned int comp_sz = (1 << 4*COMPONENT_SZ);
+ size_t comp_sz = (1LLU << 4*COMPONENT_SZ);
   llong* dict = (llong*)malloc(comp_sz/8);
   unsigned int tmppanco;
  for(int c=0; c< co_dstat_pan.comp_num; c++ ){
@@ -403,7 +404,7 @@ int uniq_sketch_union()
   fwrite( &co_dstat_readin,sizeof(co_dstat_t),1, co_stat_fp2 );
   fclose(co_stat_fp);
   fclose(co_stat_fp2);
-  unsigned int comp_sz = (1 << 4*COMPONENT_SZ);
+  size_t comp_sz = (1LLU << 4*COMPONENT_SZ);
   llong* dict = (llong*)malloc(comp_sz/8);
  llong* dict2 = (llong*)malloc(comp_sz/8);
   unsigned int tmpcbdco;
@@ -549,7 +550,7 @@ compan_t *organize_taxf(char* taxfile){
  for(int i= 0; i< ln ; i++) {
   fgets(tmpstr,PATHLEN,tf);
   if( tmpstr[strlen(tmpstr)-1] != '\n')
-   err(errno,"organize_taxf(): %dth line %s is not full read %s, exceed PATHLEN %d ",i,tmpstr,PATHLEN);
+   err(errno,"organize_taxf(): %dth line %s is not full read, exceed PATHLEN %d ",i,tmpstr,PATHLEN);
   else tmpstr[strlen(tmpstr)-1] = '\0' ;
   int taxid = atoi(strtok(tmpstr,s)) ;
   char *taxname = strtok(NULL,s);
@@ -608,9 +609,9 @@ int combin_subset_pans(char* taxfile){
   err(errno,"combin_subset_pans():%s's genome number %d not matches %s's genome number %d",co_dstat_fpath,co_dstat_readin.infile_num,taxfile,subset->gn);
  free(co_dstat_fpath);
  mkdir(set_opt.outdir,0777);
- char tmppath[PATHLEN]; struct stat s; int outfn; llong all_ctx_ct = 0;
+ char tmppath[PATHLEN]; struct stat s; int outfn = 0; llong all_ctx_ct = 0;
  ctx_obj_ct_t *ctx_ct_list = calloc(subset->taxn,sizeof(ctx_obj_ct_t));
- unsigned int comp_sz = (1 << 4*COMPONENT_SZ);
+ size_t comp_sz = (1LLU << 4*COMPONENT_SZ);
   llong* dict = (llong*)malloc(comp_sz/8);
   size_t *outcombcoidx = malloc(sizeof(size_t)* (subset->taxn+1));
   for(int c=0; c < co_dstat_readin.comp_num; c++){
@@ -653,7 +654,9 @@ int combin_subset_pans(char* taxfile){
     }
     outfn++;
     outcombcoidx[outfn]= offset;
+    printf("%d/%d species pangenome grouped\r",t,subset->taxn);
   }
+  printf("\n");
   fclose(tmpfh);
   sprintf(tmppath,"%s/%s.%d",set_opt.outdir,idx_prefix,c);
   tmpfh = fopen(tmppath,"wb");
@@ -691,4 +694,122 @@ int combin_subset_pans(char* taxfile){
  free(dict);
  free(outcombcoidx);
  return 0;
+}
+int grouping_genomes(char* taxfile){
+  compan_t *subset = organize_taxf(taxfile);
+  const char* co_dstat_fpath = NULL;
+  co_dstat_fpath = test_get_fullpath(set_opt.insketchpath,co_dstat);
+  if(co_dstat_fpath == NULL ) err(errno,"cannot find %s under %s ",co_dstat,set_opt.insketchpath);
+  FILE *tmpfh;
+  if( ( tmpfh = fopen(co_dstat_fpath,"rb")) == NULL ) err(errno,"grouping_genomes():%s",co_dstat_fpath);
+  co_dstat_t co_dstat_readin;
+  fread( &co_dstat_readin, sizeof(co_dstat_t),1,tmpfh );
+  fclose(tmpfh);
+  if(co_dstat_readin.infile_num != subset->gn)
+    err(errno,"grouping_genomes():%s's genome number %d not matches %s's genome number %d",co_dstat_fpath,co_dstat_readin.infile_num,taxfile,subset->gn);
+  free(co_dstat_fpath);
+  mkdir(set_opt.outdir,0777);
+  char tmppath[PATHLEN]; struct stat s; int outfn = 0; llong all_ctx_ct = 0;
+  ctx_obj_ct_t *ctx_ct_list = calloc(subset->taxn,sizeof(ctx_obj_ct_t));
+ unsigned int **tax_dict_ar = malloc(subset->taxn * sizeof(unsigned int *));
+ int* tax_dict_size = malloc(subset->taxn*sizeof(int));
+  size_t *outcombcoidx = malloc(sizeof(size_t)* (subset->taxn+1));
+  for(int c=0; c < co_dstat_readin.comp_num; c++){
+    sprintf(tmppath,"%s/%s.%d",set_opt.insketchpath,skch_prefix,c);
+    if(stat(tmppath, &s) != 0) err(errno,"grouping_genomes():%s",tmppath);
+    unsigned int *tmpcombco = malloc(s.st_size);
+    if((tmpfh = fopen(tmppath,"rb")) == NULL) err(errno,"grouping_genomes():%s",tmppath);
+    fread(tmpcombco,s.st_size, 1,tmpfh);
+    fclose(tmpfh);
+    sprintf(tmppath,"%s/%s.%d",set_opt.insketchpath,idx_prefix,c);
+    if(stat(tmppath, &s) != 0) err(errno,"grouping_genomes():%s",tmppath);
+    size_t *tmpcombcoidx = malloc(s.st_size);
+    if((tmpfh = fopen(tmppath,"rb")) == NULL) err(errno,"grouping_genomes():%s",tmppath);
+    fread(tmpcombcoidx,s.st_size, 1,tmpfh);
+    fclose(tmpfh);
+    for(int t = 0; t < subset->taxn; t++){
+      if(subset->tax[t].taxid == 0) continue;
+    int hashsize = 0;
+    for(int n = 1; n <= subset->tax[t].gids[0];n++)
+     hashsize += (tmpcombcoidx[subset->tax[t].gids[n]+1] - tmpcombcoidx[subset->tax[t].gids[n]]) ;
+    int primer_ind = LOG2(hashsize * 1.5);
+    tax_dict_size[t] = hashsize = primer_ind > 7 ? primer[primer_ind - 7] : primer[0] ;
+    tax_dict_ar[t] = calloc(hashsize,sizeof(unsigned int));
+        for(int n = 1; n <= subset->tax[t].gids[0];n++){
+          int gid = subset->tax[t].gids[n] ;
+          for(size_t i= tmpcombcoidx[gid]; i < tmpcombcoidx[gid+1];i++){
+      for (int x = 0 ; x < hashsize; x++){
+       int y = HASH(tmpcombco[i],x,hashsize);
+       if (tax_dict_ar[t][y] == 0){
+        tax_dict_ar[t][y] = tmpcombco[i];
+        break;
+       }
+       else if (tax_dict_ar[t][y] == tmpcombco[i])
+        break;
+       if (x==hashsize -1){
+        printf("grouping_genomes(): hashtable overflow! taxn=%d\tgid=%d\tkmer=%u\n",t,gid,tmpcombco[i]);
+       }
+      }
+          }
+        }
+  }
+  sprintf(tmppath,"%s/%s.%d",set_opt.outdir,skch_prefix,c);
+    if((tmpfh = fopen(tmppath,"wb")) == NULL) err(errno,"grouping_genomes():%s",tmppath);
+  outfn = 0;
+  size_t offset = 0;
+  outcombcoidx[0] = 0;
+  for(int t = 0; t < subset->taxn; t++){
+   if(subset->tax[t].taxid == 0) continue;
+   for (int x = 0; x < tax_dict_size[t]; x++){
+    if(tax_dict_ar[t][x] != 0){
+     fwrite(&tax_dict_ar[t][x],sizeof(unsigned int),1,tmpfh);
+     offset++;
+     all_ctx_ct++;
+     ctx_ct_list[outfn]++;
+    }
+   }
+   outfn++;
+   outcombcoidx[outfn]= offset;
+   printf("%d/%d species pangenome grouped\r",t,subset->taxn);
+   free(tax_dict_ar[t]);
+  }
+    printf("\n");
+    fclose(tmpfh);
+    sprintf(tmppath,"%s/%s.%d",set_opt.outdir,idx_prefix,c);
+    tmpfh = fopen(tmppath,"wb");
+    if(tmpfh == NULL) err(errno,"grouping_genomes():%s",tmppath);
+    fwrite(outcombcoidx,sizeof(size_t),outfn+1,tmpfh);
+    fclose(tmpfh);
+    free(tmpcombco);
+    free(tmpcombcoidx);
+  }
+  co_dstat_readin.infile_num = outfn;
+  co_dstat_readin.koc = 0;
+  co_dstat_readin.all_ctx_ct = all_ctx_ct;
+  sprintf(tmppath,"%s/%s",set_opt.outdir,co_dstat);
+  if((tmpfh = fopen(tmppath,"wb")) == NULL) err(errno,"grouping_genomes():%s",tmppath);
+  fwrite(&co_dstat_readin,sizeof(co_dstat_t),1,tmpfh);
+  fwrite(ctx_ct_list,sizeof(ctx_obj_ct_t),outfn,tmpfh);
+  char (*tmpfname)[PATHLEN] = malloc(outfn * PATHLEN);
+  int idx = 0;
+  for(int t=0;t<subset->taxn;t++){
+    if(subset->tax[t].taxid != 0) {
+      if(subset->tax[t].taxname != NULL)
+        sprintf(tmpfname[idx],"%d_%s",subset->tax[t].taxid,subset->tax[t].taxname);
+      else sprintf(tmpfname[idx],"%d",subset->tax[t].taxid);
+      idx++;
+    }
+    free(subset->tax[t].gids);
+    free(subset->tax[t].taxname);
+  }
+  free(subset->tax);
+  free(subset);
+  fwrite(tmpfname,PATHLEN,outfn,tmpfh);
+  fclose(tmpfh);
+  free(tmpfname);
+  free(ctx_ct_list);
+  free(tax_dict_ar);
+ free(tax_dict_size);
+  free(outcombcoidx);
+  return 0;
 }
