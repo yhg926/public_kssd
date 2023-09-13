@@ -287,15 +287,17 @@ int abv_search (composite_opt_t *composite_opt){
    for(int n = 0; n < n_abv_match; n++)
     tmp_measure[abv_ids[n]] += (2*100 - xny_pct[abv_ids[n]].x - xny_pct[abv_ids[n]].y);
    qsort(abv_ids,n_abv_match,sizeof(int),comparator_measure);
-   for(int n = 0; n < n_abv_match; n++) printf("%s\t%s\t%lf\n",composite_opt->remaining_args[i],tmpfname[abv_ids[n]],tmp_measure[abv_ids[n]]);
+   printf("Sample\t#OTU\tL1norm\n");
+   for(int n = 0; n < n_abv_match; n++) printf("%s\t%lf\n",tmpfname[abv_ids[n]],tmp_measure[abv_ids[n]]);
   }
   else if(composite_opt->s == 2){
    qsort(abv_ids,n_abv_match,sizeof(int),comparator_measure);
-   for(int n = 0; n < n_abv_match; n++) printf("%s\t%s\t%lf\n",composite_opt->remaining_args[i],tmpfname[abv_ids[n]],sqrt(tmp_measure[abv_ids[n]]));
+   for(int n = 0; n < n_abv_match; n++) printf("%s\t%lf\n",tmpfname[abv_ids[n]],sqrt(tmp_measure[abv_ids[n]]));
   }
   else{
+   printf("Sample\t#OTU\tCosineXY\n");
    qsort(abv_ids,n_abv_match,sizeof(int),comparator_measure);
-   for(int n = n_abv_match -1 ; n >= 0; n--) printf("%s\t%s\t%lf\n",composite_opt->remaining_args[i],tmpfname[abv_ids[n]],tmp_measure[abv_ids[n]]);
+   for(int n = n_abv_match -1 ; n >= 0; n--) printf("%s\t%lf\n",tmpfname[abv_ids[n]],tmp_measure[abv_ids[n]]);
   }
   fclose(abvfh);
   free(tmp_abv);
