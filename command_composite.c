@@ -250,7 +250,9 @@ int abv_search (composite_opt_t *composite_opt){
    continue;
   }
   int n_abv_match = 0;
-  sprintf(abv_fpath,"%s/%s/%s", composite_opt->refdir,binVec_dirname,composite_opt->remaining_args[i]);
+  if( strchr(composite_opt->remaining_args[i],'/') != NULL )
+   abv_fpath = composite_opt->remaining_args[i];
+  else sprintf(abv_fpath,"%s/%s/%s", composite_opt->refdir,binVec_dirname,composite_opt->remaining_args[i]);
   stat(abv_fpath, &st);
   int abv_len = st.st_size / sizeof(binVec_t);
   binVec_t *tmp_abv = malloc(sizeof(binVec_t)*(abv_len+1));
@@ -489,7 +491,9 @@ int get_species_abundance (composite_opt_t * composite_opt) {
    for(int i = 0; i< ref_dstat.infile_num; i++) sort_ref[i] = i;
   qsort(sort_ref, ref_dstat.infile_num, sizeof(sort_ref[0]), comparator_idx);
   if(composite_opt->b){
-   sprintf(tmpfname,"%s/%s",composite_opt->refdir,binVec_dirname);
+   if(strlen(composite_opt->outdir) < 2)
+    sprintf(tmpfname,"%s/%s",composite_opt->refdir,binVec_dirname);
+   else strcpy(tmpfname,composite_opt->outdir);
    mkdir(tmpfname,0777);
    sprintf(tmpfname,"%s/%s/%s.%s",composite_opt->refdir,binVec_dirname,basename(qryname[qn]),binVec_suffix);
    if( (tmpfp = fopen(tmpfname,"wb"))==NULL) err(errno,"get_species_abundance():%s",tmpfname);
