@@ -285,20 +285,22 @@ int abv_search (composite_opt_t *composite_opt){
    for(int n = 0; n < n_abv_match; n++)
     tmp_measure[abv_ids[n]] = tmp_measure[abv_ids[n]] / (sqrt(xl2n)*y_l2n[abv_ids[n]]) ;
   }
+  printf("#Sample\t");
   if(composite_opt->s == 1) {
    for(int n = 0; n < n_abv_match; n++)
     tmp_measure[abv_ids[n]] += (2*100 - xny_pct[abv_ids[n]].x - xny_pct[abv_ids[n]].y);
    qsort(abv_ids,n_abv_match,sizeof(int),comparator_measure);
-   printf("Sample\t#OTU\tL1norm\n");
+   printf("L1norm\n");
    for(int n = 0; n < n_abv_match; n++) printf("%s\t%lf\n",tmpfname[abv_ids[n]],tmp_measure[abv_ids[n]]);
   }
   else if(composite_opt->s == 2){
    qsort(abv_ids,n_abv_match,sizeof(int),comparator_measure);
+   printf("L2norm\n");
    for(int n = 0; n < n_abv_match; n++) printf("%s\t%lf\n",tmpfname[abv_ids[n]],sqrt(tmp_measure[abv_ids[n]]));
   }
   else{
-   printf("Sample\t#OTU\tCosineXY\n");
    qsort(abv_ids,n_abv_match,sizeof(int),comparator_measure);
+   printf("CosineXY\n");
    for(int n = n_abv_match -1 ; n >= 0; n--) printf("%s\t%lf\n",tmpfname[abv_ids[n]],tmp_measure[abv_ids[n]]);
   }
   fclose(abvfh);
@@ -491,11 +493,11 @@ int get_species_abundance (composite_opt_t * composite_opt) {
    for(int i = 0; i< ref_dstat.infile_num; i++) sort_ref[i] = i;
   qsort(sort_ref, ref_dstat.infile_num, sizeof(sort_ref[0]), comparator_idx);
   if(composite_opt->b){
-   if(strlen(composite_opt->outdir) < 2)
+   if(strlen(composite_opt->outdir) < 3)
     sprintf(tmpfname,"%s/%s",composite_opt->refdir,binVec_dirname);
    else strcpy(tmpfname,composite_opt->outdir);
    mkdir(tmpfname,0777);
-   sprintf(tmpfname,"%s/%s/%s.%s",composite_opt->refdir,binVec_dirname,basename(qryname[qn]),binVec_suffix);
+   sprintf(tmpfname,"%s/%s.%s",tmpfname,basename(qryname[qn]),binVec_suffix);
    if( (tmpfp = fopen(tmpfname,"wb"))==NULL) err(errno,"get_species_abundance():%s",tmpfname);
   }
   int num_pass = 0;
@@ -528,7 +530,6 @@ int get_species_abundance (composite_opt_t * composite_opt) {
   if(composite_opt->b){
    for(int i = 0; i< num_pass;i++){
     binVec[i].pct = ( binVec[i].pct - 1)*100/(binVecsum - num_pass) ;
-    printf("%d\t%f\n",binVec[i].ref_idx, binVec[i].pct);
    }
    fwrite(binVec,sizeof(binVec_t),num_pass,tmpfp);
    fclose(tmpfp);
