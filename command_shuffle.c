@@ -185,6 +185,8 @@ int write_dim_shuffle_file(dim_shuffle_stat_t* dim_shuffle_stat, char *outfile_p
   + fwrite(shuffled_dim,sizeof(int),1 << 4*dim_shuffle_stat->subk,shuf_out);
  fclose(shuf_out);
  free(shuffled_dim);
+ printf("kssd shuffle: shuf_id=%d, k = %d, halfCtxLen = %d, level= %d\n",
+    dim_shuffle_stat->id, dim_shuffle_stat->k,dim_shuffle_stat->subk,dim_shuffle_stat->drlevel);
  return ret;
 };
 dim_shuffle_t* read_dim_shuffle_file(char *dim_shuffle_file)

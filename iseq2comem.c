@@ -72,7 +72,8 @@ void seq2co_global_var_initial(void)
  dim_shuf_arr = dim_shuffle->shuffled_dim;
  dim_shuf_arr_len = 1LLU << (4*half_subctx_len) ;
  dim_start = 0;
- dim_end = MIN_SUBCTX_DIM_SMP_SZ ;
+ llong subspace_sz = 1LLU << 4*(half_subctx_len - drlevel) ;
+ dim_end = dim_start + (subspace_sz > MIN_SUBCTX_DIM_SMP_SZ ?subspace_sz :MIN_SUBCTX_DIM_SMP_SZ);
 };
 int reads2mco(char* seqfname,const char *co_dir, char * pipecmd){
 #define unit_incrs 1000000
@@ -536,7 +537,7 @@ llong wrt_co2cmpn_use_inn_subctx(char* cofilename, llong *co)
   unsigned int count, wr = 0, newid;
  for(count=0;count < hashsize; count++)
  {
-  if( co[count] != 0 )
+  if( co[count] != 0 && co[count] < HIBITSET1 )
   {
    newid = (unsigned int)( co[count] >> comp_code_bits ) ;
    fwrite( &newid, sizeof(unsigned int),1,outf[(int)( co[count] % component_num )] );
@@ -612,3 +613,91 @@ unsigned int keycount =0 ;
  free(fq_buff);
  return co;
 }
+llong * uniq_fasta2co(char* seqfname, llong *co, char * pipecmd)
+{
+  llong tuple = 0LLU, crvstuple = 0LLU,
+    unituple, drtuple, pfilter;
+  memset(co,0LLU,hashsize*sizeof(llong));
+  char seqin_buff[ READSEQ_BUFFSZ + 1 ];
+  FILE *infp;
+  char fas_fname[PATHLEN];
+  if(pipecmd[0] != '\0')
+    sprintf(fas_fname,"%s %s",pipecmd,seqfname);
+  else
+    sprintf(fas_fname,"%s %s",gzpipe_cmd,seqfname);
+  if( (infp=popen(fas_fname,"r")) == NULL ) err(errno,"fasta2co():%s",fas_fname);
+  int newLen = fread(seqin_buff, sizeof(char),READSEQ_BUFFSZ,infp);
+  if(! (newLen >0) ) err(errno,"fastco():eof or fread error file=%s",seqfname);
+  llong base = 1; char ch; int basenum;
+  unsigned int keycount = 0;
+  for(int pos = 0; pos <= newLen; pos++)
+  {
+    if(pos == newLen){
+        newLen = fread(seqin_buff, sizeof(char),READSEQ_BUFFSZ,infp);
+      if(newLen > 0)
+        pos = 0;
+      else break;
+    };
+    ch = seqin_buff[pos];
+    basenum = Basemap[(int)ch];
+    if(basenum != DEFAULT)
+    {
+      tuple = ( ( tuple<< 2 ) | (llong)basenum ) & tupmask ;
+      crvstuple = ( crvstuple >> 2 ) + (((llong)basenum^3LLU) << crvsaddmove);
+      base++;
+    }
+    else if ( (ch == '\n') || (ch == '\r') ) { continue;}
+    else if (isalpha(ch)){ base=1; continue; }
+    else if ( ch == '>' )
+    {
+      while( (pos < newLen ) && ( seqin_buff[pos] != '\n' ) )
+      {
+        if (pos < newLen - 1)
+          pos++;
+        else
+        {
+          newLen = fread(seqin_buff, sizeof(char),READSEQ_BUFFSZ,infp);
+          if(newLen > 0) pos = -1;
+          else err(errno,"fasta2co(): can not find seqences head start from '>' %d",newLen);
+        };
+      };
+      base = 1;
+      continue;
+    }
+    else {
+      base=1;
+      continue;
+    };
+    if( base > TL )
+    {
+      unituple = tuple < crvstuple ? tuple:crvstuple;
+      int dim_tup = ((unituple & domask) >> ( (half_outctx_len)*2 ) ) ;
+      pfilter = dim_shuf_arr[dim_tup];
+      if( ( pfilter >= dim_end) || (pfilter < dim_start ) ) continue;
+      pfilter = pfilter - dim_start;
+      drtuple = ( ( (unituple & undomask)
+              + ( ( unituple & ( ( 1LLU<< ( half_outctx_len*2) ) - 1)) << (TL*2 - half_outctx_len*4) ) )
+              >> ( drlevel*4 ) )
+              + pfilter ;
+      unsigned int i,n ;
+      for(i=0;i<hashsize;i++)
+      {
+        n = HASH(drtuple,i,hashsize);
+        if (co[n] == 0)
+        {
+          co[n] = drtuple;
+          keycount++;
+          if( keycount > hashlimit)
+            err(errno,"the context space is too crowd, try rerun the program using -k%d", half_ctx_len + 1);
+          break;
+        }
+        else if ( (co[n] | HIBITSET1) == (drtuple | HIBITSET1) ) {
+     co[n] |= HIBITSET1 ;
+          break;
+    }
+      };
+    };
+  };
+    pclose(infp);
+  return co;
+};

@@ -486,7 +486,9 @@ int get_species_abundance (composite_opt_t * composite_opt) {
      free(qry_index_combco);
    free(qry_abund);
   }
+#ifndef MIN_KM_S
 #define MIN_KM_S 6
+#endif
 #define ST_PCTL (0.98)
 #define ED_PCTL (0.99)
   int *sort_ref = malloc(ref_dstat.infile_num* sizeof(int));
@@ -507,7 +509,7 @@ int get_species_abundance (composite_opt_t * composite_opt) {
    if (kmer_num < MIN_KM_S) break;
    qsort(ref_abund[sort_ref[i]] + 1, kmer_num, sizeof(int),comparator);
    int sum = 0;
-   for(int n = 1; n <= kmer_num; n++) sum+= ref_abund[sort_ref[i]][n];
+   for(int n = 1; n <= kmer_num; n++) sum += ref_abund[sort_ref[i]][n];
    int median_idx = kmer_num /2;
    int pct09_idx = kmer_num * ST_PCTL ;
    int lastsum = 0; int lastn = 0;
@@ -516,7 +518,7 @@ int get_species_abundance (composite_opt_t * composite_opt) {
     lastn++;
    }
    if(composite_opt->b){
-    if (ref_abund[sort_ref[i]][median_idx] > 1 && kmer_num > 7){
+    if (ref_abund[sort_ref[i]][median_idx] > 1 && kmer_num > MIN_KM_S + 1){
      binVec[num_pass].ref_idx = sort_ref[i];
      binVec[num_pass].pct = (float)lastsum/lastn;
      binVecsum += binVec[num_pass].pct;
@@ -524,7 +526,7 @@ int get_species_abundance (composite_opt_t * composite_opt) {
     }
    }
    else{
-    printf("%s\t%s\t%d\t%f\t%f\t%d\t%d\n",qryname[qn],refname[sort_ref[i]], kmer_num, (float)sum/kmer_num,(float)lastsum/lastn,ref_abund[sort_ref[i]][median_idx], ref_abund[sort_ref[i]][kmer_num-1]);
+    printf("%s\t%s\t%d\t%f\t%f\t%d\t%d\n",qryname[qn],refname[sort_ref[i]], kmer_num, (float)sum/kmer_num,(float)lastsum/lastn,ref_abund[sort_ref[i]][median_idx], ref_abund[sort_ref[i]][kmer_num]);
    }
   }
   if(composite_opt->b){
