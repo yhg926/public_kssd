@@ -273,6 +273,7 @@ const char * run_stageI (dist_opt_val_t *opt_val, infile_tab_t *seqfile_stat,
  }
  else {
   int num_threads = seqfile_stat->infile_num > p_fit_mem ? p_fit_mem : 1;
+  int fcount = 0;
 #pragma omp parallel for num_threads(num_threads) reduction(+:all_ctx_ct) schedule(guided)
    for(int i = 0; i< seqfile_stat->infile_num; i++){
      int tid = 0;
@@ -298,12 +299,18 @@ const char * run_stageI (dist_opt_val_t *opt_val, infile_tab_t *seqfile_stat,
      opt_val->abundance = 0;
      printf("Warning: close abundance mode (-A) since non-fastq file input.\n");
     }
-     co = fasta2co(seqfname,CO[tid],opt_val->pipecmd);
+    if(opt_val->u)
+     co = uniq_fasta2co(seqfname,CO[tid],opt_val->pipecmd);
+    else
+      co = fasta2co(seqfname,CO[tid],opt_val->pipecmd);
         ctx_ct_list[i] = wrt_co2cmpn_use_inn_subctx(cofname,co);
        }
-   printf("decomposing %s\n",seqfname) ;
    all_ctx_ct += ctx_ct_list[i] ;
+#pragma omp atomic
+   fcount++;
+   printf("%d/%d decomposing %s\r",fcount,seqfile_stat->infile_num,seqfname) ;
   }
+  printf("\n");
 #pragma omp parallel for num_threads(p_fit_mem) schedule(guided)
     for(int c = 0; c < component_num; c++){
    size_t *cof_index_in_cbdco = malloc( (seqfile_stat->infile_num + 1) * sizeof(size_t) );
@@ -318,7 +325,7 @@ const char * run_stageI (dist_opt_val_t *opt_val, infile_tab_t *seqfile_stat,
     com_abund_fp = fopen(tmpfname,"wb");
     if( com_abund_fp == NULL) err(errno,"%s",tmpfname);
    }
-      void *tmp_mem = malloc( LD_FCTR * 2 * (1 << (4*COMPONENT_SZ - CTX_SPC_USE_L)) *sizeof(unsigned int) );
+      void *tmp_mem = malloc( LD_FCTR * 2 * (1LLU << (4*COMPONENT_SZ - CTX_SPC_USE_L)) *sizeof(unsigned int) );
       struct stat tmpstat;
       FILE *tmpfp;
       cof_index_in_cbdco[0] = 0;
@@ -570,7 +577,7 @@ void mco_cbd_co_dist(dist_opt_val_t *opt_val_in)
  if(ctx_obj_ct == MAP_FAILED) err(errno,"ctx_obj_ct mmap error");
  close(dist_bfp);
  int page_sz = sysconf(_SC_PAGESIZE);
- int comp_sz = (1 << 4*COMPONENT_SZ);
+ size_t comp_sz = (1LLU << 4*COMPONENT_SZ);
  if( comp_sz % page_sz != 0 ) err(errno,"comp_sz %d is not multiple of page_sz %d ",comp_sz,page_sz );
  int num_unit_mem = mem_limit / (mco_dstat_readin.infile_num*sizeof(ctx_obj_ct_t) * page_sz);
  if(num_unit_mem < 1) err(errno,"at least %fG memory needed to map ./onedist, specify more memory use -m",
@@ -706,13 +713,10 @@ void mco_cbdco_nobin_dist(dist_opt_val_t *opt_val_in)
     if (dist_bfp == -1) err(errno," mco_cbdco_nobin_dist()::%s",onedist);
   }else err(EEXIST," mco_cbdco_nobin_dist():%s",onedist);
   int page_sz = sysconf(_SC_PAGESIZE);
-  size_t comp_sz = (1 << 4*COMPONENT_SZ);
+  size_t comp_sz = (1LLU << 4*COMPONENT_SZ);
   if( comp_sz % page_sz != 0 ) err(errno,"comp_sz %d is not multiple of page_sz %d ",comp_sz,page_sz );
   size_t maplength;
   int bnum_infile;
-  FILE *cbd_fcode_comp_fp,*cbd_fcode_comp_index_fp;
-  struct stat cbd_fcode_stat;
-  size_t *fco_pos = malloc(sizeof(size_t) * (co_dstat_readin.infile_num + 1) );
   size_t *mco_offset_index = malloc(sizeof(size_t) * comp_sz);
 #define MCOMM_SZ 442317172
   gidobj_t* mco_mem = malloc( sizeof(gidobj_t) * MCOMM_SZ );
@@ -854,7 +858,7 @@ void mco_cbd_koc_compatible_dist(dist_opt_val_t *opt_val_in)
     if (dist_bfp == -1) err(errno,"mco_cbd_co_dist()::%s",onedist);
   }else err(EEXIST,"mco_cbd_koc_compatible_dist:%s",onedist);
  int page_sz = sysconf(_SC_PAGESIZE);
-  size_t comp_sz = (1 << 4*COMPONENT_SZ);
+  size_t comp_sz = (1LLU << 4*COMPONENT_SZ);
   if( comp_sz % page_sz != 0 ) err(errno,"comp_sz %d is not multiple of page_sz %d ",comp_sz,page_sz );
  size_t maplength;
   int bnum_infile;
