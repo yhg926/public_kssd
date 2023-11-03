@@ -26,7 +26,7 @@ int main(int argc, char** argv)
  const char subcommand_n[] = "<subcommand>";
   domain = (char*) malloc(strlen(argv[0])+1);
   strcpy(domain,argv[0]);
-  long_domain = (char*) malloc( strlen(domain) + strlen(subcommand_n) + 1);
+  long_domain = (char*) malloc( strlen(domain) + strlen(subcommand_n) + 2);
   snprintf(long_domain,strlen(domain) + strlen(subcommand_n) + 2,"%s %s",domain,subcommand_n);
   cmd_global(argc, argv);
   return 0;
