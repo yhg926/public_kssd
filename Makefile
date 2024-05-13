@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS= -std=gnu11 -Wall -Wno-unused-result -O3 -ggdb -lz -fopenmp
 all:
-	$(CC) $(CFLAGS)  *.c -o ./kssd -lm
+	$(CC) $(CFLAGS) -DCOMPONENT_SZ=7 *.c -o ./kssd -lm
 alert:
 	$(CC) $(CFLAGS) -DCOMPONENT_SZ=8 *.c -o ./kssd_CSZ8 -lm
 strange:
