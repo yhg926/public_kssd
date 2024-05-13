@@ -33,14 +33,15 @@ make
 # 2 Quick-Tutorial
 ```
 cd test_fna;
-#sketch references
-../kssd dist -L ../shuf_file/L3K10.shuf -r ./seqs1 -o reference
+#sketch & index references
+../kssd dist -L ../shuf_file/L3K10.shuf -o reference ./seqs1
+../kssd dist -o reference reference 
 #sketch queries 
 ../kssd dist -L ../shuf_file/L3K10.shuf -o query ./seqs2
 #Search queries against references db 
-../kssd dist -r ref -o distout query
+../kssd dist -r reference -o distout query
 # or you can compute the pairwise distance of references
-../kssd dist -r ref -o distout reference
+../kssd dist -r reference -o distout reference
 ```
 Here is the explanation of the output file "distance.out" (please see [How to cite](#4-how-to-cite) for the referred equations)
 
