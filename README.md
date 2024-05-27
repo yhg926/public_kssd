@@ -119,7 +119,7 @@ prefetch ERR000001 && kssd dist -L <your .shuf file> -n 2 -o <outdir> --pipecmd 
 ### 3.2.4 Set operations
 #### 3.2.4.1 Sketches union 
 ```
-kssd set -u <qry_outdir/qry> -o <union_outdir>  
+kssd set -u -o <union_outdir> <qry_outdir/qry> 
 ```
 It will create the union sketch in <union_outdir> from the combined queries sketch in <qry_outdir/qry>. Note the combined queries sketch is just a sketch combined from all queries sketches, the union operation deduplicate those integers duplicated in different queries;
 #### 3.2.4.2 Sketches intersection
