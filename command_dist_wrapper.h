@@ -42,6 +42,7 @@ typedef struct dist_opt_val
  PFIELD outfields;
  bool correction;
  bool abundance;
+ bool u;
  char pipecmd[PATHLEN];
  char shared_kmerpath[PATHLEN];
  bool keep_shared_kmer;
