@@ -35,6 +35,16 @@ static struct argp_option opt_global[] = {
  {"license",'l',0, OPTION_NO_USAGE,"license and copyright information.",0},
  { 0 }
 };
+
+static char citations[] =
+"In keeping with academic convention, If you use KSSD, please cite:\n\n"
+"Yi, H., Lin, Y., Lin, C., et al. (2021). Kssd: sequence dimensionality reduction by k-mer substring\n"
+"space sampling enables real-time large-scale datasets analysis. Genome Biology, 22, 84.\n"
+"https://doi.org/10.1186/s13059-021-02303-4\v\n"
+;
+
+
+
 static char doc_license[] =
 "\n"
   "  Copyright 2019 Huiguang Yi. All Rights Reservered.\n\n"
@@ -64,7 +74,10 @@ static char doc_global[] =
    "  reverse	reverse kssd sketch to k-mer set.\n"
 "\n"
       "  composite	metagenomics composition analysis.\n"
+"\v\n"
+"Documents:	https://github.com/yhg926/public_kssd/blob/master/README.md\n"
 "\n"
+
 ;
 static error_t parse_global(int key, char* arg, struct argp_state* state)
 {
@@ -100,7 +113,7 @@ static error_t parse_global(int key, char* arg, struct argp_state* state)
   }
   else if(key == ARGP_KEY_NO_ARGS){
         state->name = long_domain;
-    printf("\n%s\n\n",argp_program_version);
+    printf("\n%s\n\n%s",argp_program_version,citations);
     printf("Unit_space_size = %d\n\n", COMPONENT_SZ);
     printf("Type 'kssd --license' for license and copyright information.\n\n");
         argp_state_help(state,stdout,ARGP_HELP_SHORT_USAGE);
