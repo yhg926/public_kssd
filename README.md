@@ -1,164 +1,567 @@
-<p align="center">
-	<img src="./Kssd_Logo" width="200" height="200"/>
-</p>
+<div align="center">
+  <img src="Kssd_Logo" alt="KSSD logo" width="180">
 
-# Kssd: K-mer substring space sampling/shuffling Decomposition
+# KSSD
 
-Kssd is a command-line tool for large-scale sequences sketching and resemblance- and containment-analysis. It sketches sequences by k-mer substring space sampling/shuffling, please see Methods part of our Genome Biology paper (https://genomebiology.biomedcentral.com/articles/10.1186/s13059-021-02303-4) for how it works. It handles DNA sequences of both fasta or fastq format, whether gzipped or not. Kssd run on linux system, currently not support for MacOS and Windows OS.
-### Table of contents
-1.  [Installation](#1-installation)
-2.  [Quick Tutorial](#2-quick-tutorial)
-3.  [For Advanced Users](#3-for-advanced-users)
-    1. [K-mer substring space shuffling](#31-k-mer-substring-space-shuffling)
-    2. [Sketching sequences](#32-sketching-sequences)
-        1.  [Sketching references](#321-sketching-references)  
-        2.  [Sketching queries](#322-sketching-queries)
-	3.  [Sketching from data streaming](#323-Sketching-from-data-streaming)
-	4.  [Set operations](#324-Set-operations)
-		1.  [Sketches union](#3241-Sketches-union)
-		2.  [Sketches intersection](#3242-Sketches-intersection)
-		3.  [Sketches subtraction](#3243-Sketches-subtraction)	 
-    3.  [Distance estimation](#33-distance-estimation)
-        1.  [Reference against references distance](#331-reference-against-references-distance) 
-        2.  [Search the queries against the references](#332-search-the-queries-against-the-references)
-    4.	[Combine Queries](#34-combine-queries)
-4.  [How to cite](#4-how-to-cite)     
+**K-mer substring space sampling / shuffling decomposition for large-scale DNA sequence sketching, resemblance estimation, and containment analysis**
 
-# 1 Installation 
+</div>
+
+KSSD is a Linux command-line tool for sketching large collections of DNA sequences and estimating sequence resemblance or containment from reduced k-mer representations. It accepts FASTA and FASTQ input, including gzipped files, and can also sketch streamed sequence data, for example from SRA Toolkit commands.
+
+KSSD differs from ordinary per-dataset k-mer sampling methods by using a predefined shuffled k-mer substring space. References and queries are mapped into the same sampled k-mer subspace, enabling efficient large-scale comparison while preserving both resemblance- and containment-oriented signals.
+
+If you use KSSD, please cite the Genome Biology paper listed in [Citation](#citation).
+
+---
+
+## Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Command overview](#command-overview)
+- [Quick tutorial](#quick-tutorial)
+- [Core workflow](#core-workflow)
+- [Choosing k-mer and reduction parameters](#choosing-k-mer-and-reduction-parameters)
+- [Generate a shuffled k-mer substring space](#generate-a-shuffled-k-mer-substring-space)
+- [Sketch references](#sketch-references)
+- [Sketch queries](#sketch-queries)
+- [Compare sketches](#compare-sketches)
+- [Sketch from streaming input](#sketch-from-streaming-input)
+- [Combine query batches](#combine-query-batches)
+- [Set operations](#set-operations)
+- [Reverse sketches to k-mer sets](#reverse-sketches-to-k-mer-sets)
+- [Output: distance.out](#output-distanceout)
+- [Notes and limitations](#notes-and-limitations)
+- [Citation](#citation)
+- [License](#license)
+
+---
+
+## Features
+
+- Sketch DNA sequences from FASTA or FASTQ files.
+- Supports gzipped and uncompressed input files.
+- Builds indexed reference sketch databases.
+- Searches query sketches against reference sketch databases.
+- Computes pairwise resemblance and containment statistics.
+- Supports Jaccard-like and containment-oriented output modes.
+- Supports sketch union, intersection, subtraction, unique union, and pan-sketch combination operations.
+- Supports streaming input through `--pipecmd`.
+- Supports multi-threading when compiled with OpenMP.
+- Designed for Linux systems.
+
+---
+
+## Installation
+
+### Requirements
+
+KSSD is currently intended for Linux. A typical build requires:
+
+- `gcc`
+- `make`
+- `zlib`
+- OpenMP support, usually available through GCC
+
+On Ubuntu or Debian:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential zlib1g-dev
 ```
-git clone https://github.com/yhg926/public_kssd.git &&
-cd public_kssd &&
-make 
+
+### Build from source
+
+```bash
+git clone https://github.com/yhg926/public_kssd.git
+cd public_kssd
+make
 ```
-# 2 Quick-Tutorial
+
+After compilation, the executable should be available as:
+
+```bash
+./kssd
 ```
-cd test_fna;
-#sketch & index references
+
+You can optionally add the repository directory to your `PATH`.
+
+---
+
+## Command overview
+
+The executable exposes the following top-level subcommands:
+
+| Command | Purpose |
+|---|---|
+| `kssd shuffle` | Generate a shuffled k-mer substring-space file (`.shuf`). |
+| `kssd dist` | Sketch sequences, build/index reference sketches, and estimate distances or containment. |
+| `kssd set` | Perform set operations on sketches. |
+| `kssd reverse` | Recover k-mer sets from KSSD sketches. |
+| `kssd composite` | Advanced metagenomic composition analysis command. |
+
+Most users will mainly use `shuffle`, `dist`, and `set`.
+
+---
+
+## Quick tutorial
+
+The repository includes a small example dataset under `test_fna/`.
+
+```bash
+cd test_fna
+
+# 1. Sketch and index reference sequences.
 ../kssd dist -L ../shuf_file/L3K10.shuf -o reference ./seqs1
-../kssd dist -o reference reference 
-#sketch queries 
+../kssd dist -o reference reference
+
+# 2. Sketch query sequences with the same .shuf file.
 ../kssd dist -L ../shuf_file/L3K10.shuf -o query ./seqs2
-#Search queries against references db 
+
+# 3. Search queries against the reference database.
 ../kssd dist -r reference -o distout query
-# or you can compute the pairwise distance of references
+
+# 4. Or compute pairwise distances among the reference sketches.
 ../kssd dist -r reference -o distout reference
 ```
-Here is the explanation of the output file "distance.out" (please see [How to cite](#4-how-to-cite) for the referred equations)
 
-Column | Explanation
----|---
-Qry | query
-Ref  | reference
-Shared_k\|Ref_s\|Qry_s | number of shared k-mer between the sketches of the reference and the query\|reference sketch-size\|query sketch-size 
-Jaccard|Jaccard-coefficient (Eq. 2)
-MashD| mash distance  (Eq. 4)
-ContainmentM| containment-measurement(Eq. 3)
-AafD| aaf-distance (Eq. 5) 
-Jaccard_CI| 0.95 confidence intervel for Jaccard-coefficient
-MashD_CI| 0.95 confidence intervel for mash distance
-ContainmentM_CI| 0.95 confidence intervel for containment-measurement
-AafD_CI| 0.95 confidence intervel for aaf-distance
-P-value(J)| p-value for Jaccard-coefficient(Eq. 14)
-P-value(C)| p-value for containment-measurement(Eq. 14)
-FDR(J)| false discover rate for Jaccard-coefficient
-FDR(C)| false discover rate for containment-measurement
+The main output file is:
 
-# 3 For Advanced Users
-## 3.1 K-mer substring space shuffling
+```text
+distout/distance.out
 ```
-kssd shuffle -k <half_length_of_k-mer> -s <half_length_of_k-mer_substring> -l <dimensionality-reduction_level > -o <shuffled_k-mer_substring_space_file>
-```
-This step can be omitted, and you can skip to step 2 if you wish to use default setting of `-s`. Other wise read below:  
-This command will generate a file suffixed by ‘.shuf’ which keeps the shuffled k-mer substring space, this file would then took as input for sequences sketching or decomposition.  
-`-k`: Half-length of k-mer, `-k x` meaning use k-mer of length `2x`. For bacterial `-k 8` is recommand; for mammals or metagenomics, `-k 10` is recommand; for other genome size in-between, `-k 9` is recommand.  
-`-s`: Half-length of k-mer substring, `-s x` meaning the whole space is the collection of all `2x-mer`. Make sure `l < s < k`. The default setting is `-s 6`, usually there is no need to change this setting.   
-`-l`: The level of dimensionality-reduction. `-l x` meaning the expected rate of dimensionality-reduction is `$16^x$`; for bacterial `-l 3` is recommand; for mammals, `-l 4` or `-l 5` is recommand. `l < s`.  
-`-o` output .shuf file.
-## 3.2 Sketching sequences
-### 3.2.1 Sketching references
-```
-kssd dist -r <.fasta/fastq_dir> -L <.shuf_file or dimentionality-reduction_level> [-k <half_k-mer_length>] -o <outdir>
-```
-`-L`: The`.shuf` file generated from `kssd shuffle` or the the level of dimensionality-reduction.  
- 
-  If you feed `-L` the `.shuf` file, there is no need to specify `-k` again, since it has already been set in the `.shuf` file.
-  
-  Else if you feed `-L` the level of dimensionality-reduction, new `.shuf` file will generated and used. Actually, command:
-```
-kssd dist -r <.fasta/fastq_dir> -L <dimentionality-reduction_level> -k <half_length_of_k-mer> -o <ref_outdir>
-```
-is equivalent to  
-```
-kssd shuffle -k <half_length_of_k-mer> -s <half_length_of_k-mer_substring> -l <dimensionality-reduction_level> -o <ref_outdir/default.shuf> &&
-kssd dist -r <.fasta/fastq_dir> -L <ref_outdir/default.shuf> -o <ref_outdir>
-```
-The expected rate of dimensionality-reduction for `-L x` is `$16^x$`; for bacterial `-L 3` is recommand; for mammals, `-L 4` or `-L 5` is recommand. 
 
-`-r`: Feed it with the sequences (fasta or fastq, gzipped or not) that you want built as the references-db.  
-  
-`-k`: Half-length of k-mer, `-k x` meaning use k-mer of length `2x`. For bacterial `-k 8` is recommand; for mammals, `-k 10` is recommand; for other genome size in-between, `-k 9` is recommand.  
-  
-`-o`: There are two folders `ref/` and `qry/` in the output dir `ref_outdir`.  In Step 3 distance estimation `ref_outdir/ref` feed as references for `-r` and `ref_outdir/qry` feed as queries   
+---
 
-### 3.2.2 Sketching queries
-To compare queries with references, queries need be skeched using the same `.shuf` file with that of references.
-```
-kssd dist -o <qry_outdir> -L <ref_outdir/default.shuf or the_.shuf_file_used_by_references> <queries_.fasta/fastq_dir>
-```
-`-o`: There is only one folder `qry/` in the output dir `qry_outdir`. In Step 3 distance estimation `qry_outdir/qry` feed as queries.
+## Core workflow
 
-### 3.2.3 Sketching from data streaming
-Suppose you want sketching Sequence Read Archive Accesssion ERR000001, just run:
-```
-kssd dist -L <your .shuf file> -n 2 -o <outdir> --pipecmd "fastq-dump --skip-technical --split-spot -Z" ERR000001
-``` 
-or prefetch first
-```
-prefetch ERR000001 && kssd dist -L <your .shuf file> -n 2 -o <outdir> --pipecmd "fastq-dump --skip-technical --split-spot -Z" <.sra dir>/ERR000001.sra
-```
-### 3.2.4 Set operations
-#### 3.2.4.1 Sketches union 
-```
-kssd set -u -o <union_outdir> <qry_outdir/qry> 
-```
-It will create the union sketch in <union_outdir> from the combined queries sketch in <qry_outdir/qry>. Note the combined queries sketch is just a sketch combined from all queries sketches, the union operation deduplicate those integers duplicated in different queries;
-#### 3.2.4.2 Sketches intersection
-```
-kssd set -i <union_outdir> -o <intersect_outdir> <qry_outdir/qry>
-```
-It will create the intersection sketch in <intersect_outdir> between the union sketch in <union_outdir> and the combined queries sketch in <qry_outdir/qry>;
-#### 3.2.4.3 Sketches subtraction
-```
-kssd set -s <union_outdir> -o <subtract_outdir> <qry_outdir/qry>
-```
-It subtracts the union sketch in <union_outdir> from the combined queries sketch in <qry_outdir/qry> and creates the remainder sketch in <subtract_outdir>
+A common KSSD analysis has four stages:
 
-## 3.3 Distance estimation
-### 3.3.1 Reference against references distance
-If you only want to compute pairwise distances of all references, run:
+```text
+Input FASTA/FASTQ files
+        |
+        v
+Sketch sequences with a .shuf file
+        |
+        v
+Build/index reference sketches
+        |
+        v
+Compare query sketches against references
+        |
+        v
+distance.out
 ```
-kssd dist -r <ref_outdir/ref> -o <outdir> <ref_outdir/qry>
+
+Important: references and queries must be sketched using the same `.shuf` file. Otherwise, their sampled k-mer spaces are not comparable.
+
+---
+
+## Choosing k-mer and reduction parameters
+
+KSSD uses half-length notation for k-mers.
+
+For example:
+
+```bash
+-k 8
 ```
-### 3.3.2 Search the queries against the references
-Or if you want search the queries against the references, run:
+
+means a full k-mer length of `16`.
+
+### Common starting points
+
+| Data type | Suggested `-k` | Full k-mer length | Suggested reduction level |
+|---|---:|---:|---:|
+| Bacterial / prokaryotic genomes | `8` | 16 | `-L 2` or `-L 3` |
+| Intermediate-size genomes | `9` | 18 | `-L 3` or `-L 4` |
+| Mammalian genomes or large metagenomic datasets | `10` or `11` | 20 or 22 | `-L 4` or `-L 5` |
+
+The expected dimensionality reduction rate for level `L` is approximately:
+
+```text
+16^L
 ```
-kssd dist -r <ref_outdir/ref> -o <outdir> <qry_outdir/qry>
+
+Examples:
+
+| `L` | Approximate reduction |
+|---:|---:|
+| 2 | 256× |
+| 3 | 4,096× |
+| 4 | 65,536× |
+| 5 | 1,048,576× |
+
+Higher reduction levels produce smaller sketches and faster comparisons, but may reduce sensitivity.
+
+---
+
+## Generate a shuffled k-mer substring space
+
+A `.shuf` file defines the shuffled k-mer substring space used for sketching.
+
+```bash
+kssd shuffle \
+  -k <half_kmer_length> \
+  -s <half_substring_length> \
+  -l <reduction_level> \
+  -o <output_prefix_or_file>
 ```
-The `ref_outdir` and `qry_outdir` are the sketches created in step 2.  
-   
-  
-  The distance will output to `<outdir>/disntance`
 
-## 3.4 Combine Queries
-If you have queries generated from different running batches, you can combine them by:
+Example:
+
+```bash
+kssd shuffle -k 8 -s 5 -l 3 -o bacteria_L3K8.shuf
 ```
-kssd dist -o <outdir> <path_to_query_batch1> [<path_to_query_batch2> ...]  
+
+Options:
+
+| Option | Meaning | Default in command help |
+|---|---|---:|
+| `-k` | Half-length of the k-mer. Full k-mer length is `2 × k`. | `8` |
+| `-s` | Half-length of the k-mer substring. | `5` |
+| `-l` | Dimensionality reduction level. Expected reduction is `16^l`. | `2` |
+| `-o` | Output prefix or file name for the generated `.shuf` file. | `./default` |
+| `--usedefault` | Use the default prokaryote-oriented setting: `k=8`, `s=5`, `l=2`. | off |
+
+Parameter relationship:
+
+```text
+l < s < k
 ```
-Make sure all queries batches use the same .shuf file
 
-# 4. How to cite
+You can also use the provided `.shuf` files under `shuf_file/`.
 
-Yi, H., Lin, Y., Lin, C. et al. Kssd: sequence dimensionality reduction by k-mer substring space sampling enables real-time large-scale datasets analysis. Genome Biol 22, 84 (2021). https://doi.org/10.1186/s13059-021-02303-4
+---
 
+## Sketch references
 
+There are two common ways to sketch references.
 
+### A. Use an existing `.shuf` file
+
+```bash
+kssd dist \
+  -L <shuf_file> \
+  -o <reference_output_dir> \
+  <reference_sequence_dir>
+```
+
+Example:
+
+```bash
+kssd dist -L shuf_file/L3K10.shuf -o reference genomes/
+```
+
+Then build/index the reference sketch database:
+
+```bash
+kssd dist -o reference reference
+```
+
+### B. Let `kssd dist` generate a default `.shuf` file
+
+```bash
+kssd dist \
+  -L <reduction_level> \
+  -k <half_kmer_length> \
+  -o <reference_output_dir> \
+  <reference_sequence_dir>
+```
+
+Example:
+
+```bash
+kssd dist -L 3 -k 8 -o reference genomes/
+```
+
+When `-L` receives an integer instead of an existing `.shuf` file, KSSD generates and uses a shuffled space internally in the output directory.
+
+---
+
+## Sketch queries
+
+Queries must be sketched with the same `.shuf` file used for the references.
+
+```bash
+kssd dist \
+  -L <same_shuf_file_used_for_references> \
+  -o <query_output_dir> \
+  <query_sequence_dir>
+```
+
+Example:
+
+```bash
+kssd dist -L shuf_file/L3K10.shuf -o query query_fastq/
+```
+
+---
+
+## Compare sketches
+
+### Search queries against references
+
+```bash
+kssd dist \
+  -r <reference_sketch_dir> \
+  -o <output_dir> \
+  <query_sketch_dir>
+```
+
+Example:
+
+```bash
+kssd dist -r reference -o search_out query
+```
+
+The main result is:
+
+```text
+search_out/distance.out
+```
+
+### Pairwise comparison among references
+
+```bash
+kssd dist \
+  -r <reference_sketch_dir> \
+  -o <output_dir> \
+  <reference_sketch_dir>
+```
+
+Example:
+
+```bash
+kssd dist -r reference -o pairwise_out reference
+```
+
+### Useful `dist` options
+
+| Option | Meaning | Default / notes |
+|---|---|---|
+| `-k, --halfKmerlength INT` | Half k-mer length. Full k-mer length is `2 × k`. | `8` |
+| `-p, --threadN INT` | Number of threads. | all available threads if OpenMP is enabled |
+| `-l, --list file` | File containing paths to query sequences. | optional |
+| `-L, --DimRdcLevel INT/file` | Reduction level or `.shuf` file. | `2` |
+| `-m, --maxMemory NUM` | Maximum memory in GB. | system memory |
+| `-n, --LstKmerOcrs INT` | Minimum k-mer occurrence threshold in FASTQ input. | `1`, capped internally at `7` |
+| `-Q, --quality INT` | Filter k-mers with lowest base quality below this Phred value. | `0` |
+| `-r, --reference_dir path` | Reference sketch/database directory. | optional |
+| `-o, --outdir path` | Output directory. | `.` |
+| `-N, --neighborN_max INT` | Maximum number of nearest reference genomes to report. | command help says `1`; internal default is `0` |
+| `-D, --mutDist_max FLT` | Maximum mutation distance allowed for output. | `1` |
+| `-M, --metric 0/1` | Output metric: `0` = Jaccard, `1` = containment. | `0` |
+| `-O, --outfields 0/1/2` | Output fields: distance, q-values, confidence intervals. Later levels include earlier ones. | `2` |
+| `--correction 0/1` | Correct shared k-mer counts or not. | `0` |
+| `-A, --abundance` | Abundance-estimation mode. | off |
+| `-u, --dedup` | Ignore repeated k-mers in reference. | off |
+| `--keepcofile` | Keep intermediate `.co` files. | off |
+| `--pipecmd cmd` | Read input from a pipe command. | optional |
+| `--keepskf` | Keep shared-kmer-count file. | off |
+| `-f, --skf path` | Shared-kmer-count file path. | optional |
+| `--byread` | Sketch input by read. | off |
+
+---
+
+## Sketch from streaming input
+
+KSSD can sketch sequence data from a command pipeline. This is useful for SRA accessions.
+
+Example using `fastq-dump`:
+
+```bash
+kssd dist \
+  -L <shuf_file> \
+  -n 2 \
+  -o <output_dir> \
+  --pipecmd "fastq-dump --skip-technical --split-spot -Z" \
+  ERR000001
+```
+
+Or after prefetching the SRA file:
+
+```bash
+prefetch ERR000001
+
+kssd dist \
+  -L <shuf_file> \
+  -n 2 \
+  -o <output_dir> \
+  --pipecmd "fastq-dump --skip-technical --split-spot -Z" \
+  /path/to/ERR000001.sra
+```
+
+---
+
+## Combine query batches
+
+If query sketches were generated in multiple batches using the same `.shuf` file, they can be combined:
+
+```bash
+kssd dist \
+  -o <combined_output_dir> \
+  <query_batch_1> <query_batch_2> ...
+```
+
+Example:
+
+```bash
+kssd dist -o combined_queries query_batch1 query_batch2 query_batch3
+```
+
+All batches must have been generated with compatible sketch parameters.
+
+---
+
+## Set operations
+
+`kssd set` operates on combined sketch directories.
+
+### Union
+
+```bash
+kssd set -u -o <union_output_dir> <combined_sketch_dir>
+```
+
+Example:
+
+```bash
+kssd set -u -o union_out query/qry
+```
+
+### Unique union
+
+```bash
+kssd set -q -o <unique_union_output_dir> <combined_sketch_dir>
+```
+
+### Intersection with a pan-sketch
+
+```bash
+kssd set -i <pan_sketch_dir> -o <intersection_output_dir> <combined_sketch_dir>
+```
+
+Example:
+
+```bash
+kssd set -i union_out -o intersect_out query/qry
+```
+
+### Subtraction of a pan-sketch
+
+```bash
+kssd set -s <pan_sketch_dir> -o <subtraction_output_dir> <combined_sketch_dir>
+```
+
+Example:
+
+```bash
+kssd set -s union_out -o subtract_out query/qry
+```
+
+### Other `set` options
+
+| Option | Meaning |
+|---|---|
+| `-c, --combin_pan` | Combine pan files into a combined sketch file. |
+| `-p, --threads INT` | Number of threads. |
+| `-P, --print` | Print genome names. |
+| `-g, --grouping file.tsv` | Group genomes by an input category file. |
+| `-o, --outdir path` | Output directory. |
+
+---
+
+## Reverse sketches to k-mer sets
+
+`kssd reverse` is an advanced command for recovering k-mer sets from KSSD sketch directories.
+
+```bash
+kssd reverse \
+  -L <shuf_file> \
+  -o <output_dir> \
+  <co_dir>
+```
+
+Options:
+
+| Option | Meaning |
+|---|---|
+| `-L, --shufFile path` | Provide the `.shuf` file used for sketching. |
+| `-o, --outdir path` | Output directory for recovered k-mer files. |
+| `-p, --threads INT` | Number of threads. |
+| `-b, --byreads` | Recover k-mers from sketches generated by read. |
+
+---
+
+## Output: distance.out
+
+The main comparison result is written to:
+
+```text
+<output_dir>/distance.out
+```
+
+Typical columns include:
+
+| Column | Description |
+|---|---|
+| `Qry` | Query sequence or sketch name. |
+| `Ref` | Reference sequence or sketch name. |
+| `Shared_k` | Number of shared sampled k-mers between query and reference sketches. |
+| `Ref_s` | Reference sketch size. |
+| `Qry_s` | Query sketch size. |
+| `Jaccard` | Jaccard coefficient. |
+| `MashD` | Mash-style distance. |
+| `ContainmentM` | Containment measurement. |
+| `AafD` | AAF-style distance. |
+| `Jaccard_CI` | 95% confidence interval for Jaccard. |
+| `MashD_CI` | 95% confidence interval for Mash distance. |
+| `ContainmentM_CI` | 95% confidence interval for containment measurement. |
+| `AafD_CI` | 95% confidence interval for AAF distance. |
+| `P-value(J)` | P-value for Jaccard. |
+| `P-value(C)` | P-value for containment. |
+| `FDR(J)` | False discovery rate for Jaccard. |
+| `FDR(C)` | False discovery rate for containment. |
+
+The exact fields may depend on options such as `-M` and `-O`.
+
+---
+
+## Notes and limitations
+
+- KSSD currently targets Linux. macOS and Windows are not officially supported.
+- References and queries must be sketched with the same `.shuf` file.
+- Report the `.shuf` file, `-k`, `-s`, reduction level, KSSD version, and command lines in reproducible analyses.
+- Very high reduction levels reduce sketch size and runtime but may reduce sensitivity.
+- Some advanced commands, especially `composite`, are exposed by the executable but are less documented than the main `shuffle`, `dist`, and `set` workflow.
+
+---
+
+## Citation
+
+If you use KSSD, please cite:
+
+```text
+Yi, H., Lin, Y., Lin, C. et al.
+Kssd: sequence dimensionality reduction by k-mer substring space sampling enables real-time large-scale datasets analysis.
+Genome Biology 22, 84 (2021).
+https://doi.org/10.1186/s13059-021-02303-4
+```
+
+---
+
+## License
+
+KSSD is distributed under the Apache License, Version 2.0. See `LICENSE.txt` for details.
+
+---
+
+## Contact
+
+Please use the GitHub Issues page for bug reports, questions, and feature requests:
+
+```text
+https://github.com/yhg926/public_kssd/issues
+```
